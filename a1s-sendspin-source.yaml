@@ -1,7 +1,7 @@
-# ESP32-A1S Audio Kit (ES8388 variant) as a Sendspin source: streams the ES8388 ADC to a Sendspin server.
+# ESP32-A1S Audio Kit (ES8388 variant) Sendspin Audio Source: streams line-in audio to Sendspin servers.
 #
-# components/sendspin in https://github.com/raine-works/sendspin-a1s-source is ESPHome's sendspin component
-# updated to use sendspin-cpp with Noise_KKpsk2 transport encryption and a `source:` block.
+# Encrypted with Noise_KKpsk2 transport encryption via https://github.com/raine-works/sendspin-a1s-source.
+
 #
 # Pinout is the one shared by every A1S config linked from
 # https://community.home-assistant.io/t/esp32-a1s-audio-kit-media-player/522245 (arhills, el-bakkali, Test-subj):
