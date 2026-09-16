@@ -95,6 +95,7 @@ sendspin:
   id: sendspin_hub
   task_stack_in_psram: true
   source:
+    task_stack_in_psram: true
     microphone:
       microphone: a1s_adc
       channels: [0, 1]
