@@ -12,13 +12,10 @@ Stream pristine line-in audio from turntables, CD players, TV optical/aux output
 
 ---
 
-## 🌟 Why This Project?
+## 🌟 Overview
 
-Modern versions of Music Assistant (`aiosendspin`) mandate **Noise Protocol transport encryption** (`Noise_KKpsk2_25519_ChaChaPoly_SHA256`) for device pairing and stream admission. Unencrypted embedded devices are rejected with the warning:
+This repository provides complete, production-ready ESPHome firmware for the Ai-Thinker ESP32-A1S Audio Kit, implementing the official `source@v1` audio capture specification. It features end-to-end `Noise_KKpsk2` transport encryption, persistent cryptographic identity in NVS, low-latency DMA streaming, and hardware-tuned ES8388 codec register configurations for pristine, uncompressed analog audio streaming.
 
-> *"This device is connected without encryption (legacy mode). Pairing is not available."*
-
-This repository bridges that gap. By combining the official `source@v1` audio capture role with complete Noise cryptographic handshakes, hardware-backed NVS persistence, and low-level ES8388 register overrides, your ESP32-A1S pairs natively and securely with modern Music Assistant servers.
 
 ---
 
