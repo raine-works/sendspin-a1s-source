@@ -34,19 +34,6 @@ This repository provides complete, production-ready ESPHome firmware for the Ai-
 
 ---
 
-## 📐 Architecture Overview
-
-```mermaid
-flowchart LR
-    Audio["Line-In (3.5mm Aux)"] --> Codec["ES8388 Audio Codec"]
-    Codec --> ESP["ESP32-A1S (ESPHome)"]
-    ESP -- "Sendspin over Wi-Fi" --> MA["Music Assistant"]
-    MA --> Speakers["Multi-Room Speakers"]
-```
-
-The ESP32-A1S captures analog line-in audio through the ES8388 codec, packages it into a synchronized Sendspin audio stream, and transmits it over Wi-Fi to Music Assistant for playback across your speaker groups.
-
----
 
 ## 🛠️ Hardware Requirements & Pinout
 
