@@ -32,6 +32,9 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <span>
+#include <string>
+#include <vector>
 
 namespace esphome::sendspin_ {
 
@@ -51,15 +54,7 @@ inline constexpr float HUB = esphome::setup_priority::AFTER_WIFI;
 inline constexpr float CHILD = HUB - 1.0f;
 }  // namespace sendspin_priority
 
-#include <string>
-#include <vector>
-
-
-/// @brief Thin adapter over sendspin::SendspinClient.
-///
-/// The hub owns a SendspinClient instance and bridges its listener/provider interfaces to ESPHome's CallbackManager for
-/// fan-out to child components.
-///  - Provides persistence via ESPPreferenceObject and WiFi power management integration.
+///  - Provides persistence via ESP32 NVS and WiFi power management integration.
 ///  - Handles Sendspin roles that apply to multiple child components (artwork, controller, metadata) so their events
 ///    can be fanned out. Roles specific to a single component (player) are configured by the hub but owned by the
 ///    child thereafter, since no fan-out is needed.
