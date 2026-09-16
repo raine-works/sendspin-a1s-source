@@ -2,13 +2,13 @@
 
 ESPHome firmware that turns an ESP32-A1S Audio Kit (ES8388 variant) into an encrypted Sendspin **source**: it streams the codec's ADC (line-in jack by default) to a Sendspin server such as modern Music Assistant.
 
-Built on top of `sendspin-cpp` with **Noise_KKpsk2 transport encryption** and **source@v1** support (`brandenc77/sendspin-cpp@fix/source-pairing`), resolving the Music Assistant *"connected without encryption (legacy mode)"* restriction and enabling full device pairing.
+Built on top of `sendspin-cpp` with **Noise_KKpsk2 transport encryption** and **source@v1** support (`raine-works/sendspin-cpp@fix/source-pairing`), resolving the Music Assistant *"connected without encryption (legacy mode)"* restriction and enabling full device pairing.
 
 ## What's here
 
 - `a1s-sendspin-source.yaml` is the device config. It pulls the component below from this repo.
 - `components/sendspin` is ESPHome's `sendspin` component updated for encrypted source streaming:
-  - Uses `brandenc77/sendspin-cpp` (`fix/source-pairing`), combining the Noise protocol transport encryption (`Noise_KKpsk2` with Curve25519 / ChaCha20-Poly1305 via `noise-c`) and the `source@v1` audio capture role.
+  - Uses `raine-works/sendspin-cpp` (`fix/source-pairing`), combining the Noise protocol transport encryption (`Noise_KKpsk2` with Curve25519 / ChaCha20-Poly1305 via `noise-c`) and the `source@v1` audio capture role.
   - End-to-end transport encryption for all WebSocket frames: control messages, stream lifecycle (`client-stream/start`, `client-stream/end`), and timestamped binary PCM/Opus audio chunks.
   - Persistent device identity and pairing records stored in ESP32 NVS (Non-Volatile Storage), ensuring stable `client_id` across reboots.
   - Hub gains a `source:` block that feeds an ESPHome microphone into the Sendspin source role. Codec, chunking, and Opus options fall back to sendspin-cpp's defaults when omitted.

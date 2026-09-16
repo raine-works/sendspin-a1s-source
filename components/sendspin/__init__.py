@@ -38,9 +38,9 @@ CONF_CODEC = "codec"
 CONF_OPUS_BITRATE = "opus_bitrate"
 CONF_OPUS_COMPLEXITY = "opus_complexity"
 
-# sendspin-cpp build with Noise_KKpsk2 transport encryption and source-role support (brandenc77/sendspin-cpp@fix/source-pairing).
+# sendspin-cpp build with Noise_KKpsk2 transport encryption and source-role support (raine-works/sendspin-cpp@fix/source-pairing).
 # The IDF component manager pins the resolved commit in dependencies.lock, so clean the build files to pick up a new push.
-SENDSPIN_CPP_REPO = "https://github.com/brandenc77/sendspin-cpp.git"
+SENDSPIN_CPP_REPO = "https://github.com/raine-works/sendspin-cpp.git"
 SENDSPIN_CPP_REF = "fix/source-pairing"
 
 # Matches ARTWORK_MAX_SLOTS in sendspin-cpp.
