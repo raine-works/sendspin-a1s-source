@@ -54,7 +54,7 @@ captive_portal:
 
 external_components:
   # To iterate on the component without pushing, use `source: {type: local, path: components}` from a clone
-  - source: github://raine-works/sendspin-a1s-source@main
+  - source: github://raine-works/sendspin-a1s-source@master
     components: [sendspin]
     refresh: always
 
