@@ -16,7 +16,6 @@ Stream pristine line-in audio from turntables, CD players, TV optical/aux output
 
 This repository provides complete, production-ready ESPHome firmware for the Ai-Thinker ESP32-A1S Audio Kit, implementing the official `source@v1` audio capture specification. It features end-to-end `Noise_KKpsk2` transport encryption, persistent cryptographic identity in NVS, low-latency DMA streaming, and hardware-tuned ES8388 codec register configurations for pristine, uncompressed analog audio streaming.
 
-
 ---
 
 ## ✨ Features
@@ -33,7 +32,6 @@ This repository provides complete, production-ready ESPHome firmware for the Ai-
 - **🎛️ Dual Input Multiplexing:** Easily toggle between the 3.5 mm Aux Line-In jack (`LINE2`, default) and the onboard stereo electret microphones (`LINE1`) via Home Assistant or ESPHome dashboard.
 
 ---
-
 
 ## 🛠️ Hardware Requirements & Pinout
 
