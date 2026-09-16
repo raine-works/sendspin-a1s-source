@@ -78,6 +78,7 @@ sendspin::SourceRoleConfig SendspinSource::build_role_config() const {
 // THREAD CONTEXT: Main loop (fired from the hub's client loop())
 void SendspinSource::on_streaming_started() {
   ESP_LOGI(TAG, "Server started the stream; starting microphone");
+  this->next_capture_time_us_ = 0;
   this->microphone_source_->start();
 }
 
