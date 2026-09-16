@@ -37,29 +37,14 @@ This repository provides complete, production-ready ESPHome firmware for the Ai-
 ## 📐 Architecture Overview
 
 ```mermaid
-flowchart TD
-    subgraph AudioHardware ["ESP32-A1S Hardware Layer"]
-        LineIn["3.5 mm Line-In (LINE2)"] --> ES8388["ES8388 Audio Codec"]
-        OnboardMic["Onboard Mics (LINE1)"] -. Selectable .-> ES8388
-        ES8388 -- "I2S Philips 16-bit 48kHz (MCLK:0, BCLK:27, LRCK:25, DIN:35)" --> I2SDMA["ESP32 I2S DMA Controller"]
-    end
-
-    subgraph ESPHomeLayer ["Real-Time Audio Pipeline"]
-        I2SDMA --> MicSource["MicrophoneSource Buffer"]
-        MicSource -- "write_audio() + Slew Tracking" --> RingBuffer["SPSC Ring Buffer (8 MB External PSRAM)"]
-    end
-
-    subgraph CryptoLayer ["Security & Cryptography"]
-        NVS[("ESP32 Flash NVS ('sendspin')")] <--> KeyStore["X25519 Identity & Pairing Records"]
-        KeyStore --> NoiseEngine["Noise_KKpsk2 Engine (ChaChaPoly / SHA256)"]
-        RingBuffer --> EncryptedFraming["Encrypted Chunks (20ms / 3840 bytes)"]
-        EncryptedFraming --> NoiseEngine
-    end
-
-    subgraph ServerLayer ["Music Assistant Integration"]
-        NoiseEngine == "Encrypted WebSocket Transport" ==> MAServer["Music Assistant (aiosendspin)"]
-    end
+flowchart LR
+    Audio["Line-In (3.5mm Aux)"] --> Codec["ES8388 Audio Codec"]
+    Codec --> ESP["ESP32-A1S (ESPHome)"]
+    ESP -- "Sendspin over Wi-Fi" --> MA["Music Assistant"]
+    MA --> Speakers["Multi-Room Speakers"]
 ```
+
+The ESP32-A1S captures analog line-in audio through the ES8388 codec, packages it into a synchronized Sendspin audio stream, and transmits it over Wi-Fi to Music Assistant for playback across your speaker groups.
 
 ---
 
