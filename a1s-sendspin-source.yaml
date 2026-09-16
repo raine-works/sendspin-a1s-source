@@ -1,0 +1,106 @@
+# ESP32-A1S Audio Kit (ES8388 variant) as a Sendspin source: streams the ES8388 ADC to a Sendspin server.
+#
+# components/sendspin in https://github.com/raine-works/sendspin-a1s-source is ESPHome's sendspin component
+# updated to use sendspin-cpp with Noise_KKpsk2 transport encryption and a `source:` block.
+#
+# Pinout is the one shared by every A1S config linked from
+# https://community.home-assistant.io/t/esp32-a1s-audio-kit-media-player/522245 (arhills, el-bakkali, Test-subj):
+#   I2C  SDA 33, SCL 32 (ES8388 at 0x10)    I2S  MCLK 0, BCLK 27, LRCK 25, DIN 35 (DOUT 26 unused here)
+#
+# Source only: ESPHome's i2s_audio has no full-duplex mode, and a speaker on this bus would hold the I2S lock
+# the microphone needs.
+
+esphome:
+  name: a1s-sendspin-source
+  friendly_name: A1S Sendspin Source
+  min_version: 2026.8.0
+  on_boot:
+    priority: -100
+    then:
+      # LINE2 is the 3.5 mm line-in jack; LINE1 is the onboard mics
+      - select.set:
+          id: adc_input
+          option: LINE2
+      # The es8388 driver sets the ADC up for voice capture; put it back to plain line-level capture
+      - lambda: |-
+          // ADCCONTROL4: 16-bit I2S framing. The driver writes 0x0D (left-justified) but i2s_audio reads Philips
+          // I2S, which is one bit late: every sample loses its sign bit and L/R swap. ESP-ADF writes 0x0C here.
+          id(es8388_dac)->write_byte(0x0C, 0x0C);
+          // ADCCONTROL10: ALC off (the driver's voice ALC pumps music); PGA gain stays at ADCCONTROL1's 0 dB
+          id(es8388_dac)->write_byte(0x12, 0x22);
+          // ADCCONTROL14: noise gate off (the driver's gate mutes the ADC below -40.5 dBFS)
+          id(es8388_dac)->write_byte(0x16, 0x00);
+
+esp32:
+  board: esp-wrover-kit
+  framework:
+    type: esp-idf
+
+psram:
+
+logger:
+
+api:
+
+ota:
+  - platform: esphome
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+
+captive_portal:
+
+external_components:
+  # To iterate on the component without pushing, use `source: {type: local, path: components}` from a clone
+  - source: github://raine-works/sendspin-a1s-source@main
+    components: [sendspin]
+    refresh: always
+
+i2c:
+  sda: GPIO33
+  scl: GPIO32
+  # Expect 0x10 (ES8388). 0x1A is the AC101 variant, which this config does not support.
+  scan: true
+
+audio_dac:
+  - platform: es8388
+    id: es8388_dac
+
+select:
+  - platform: es8388
+    es8388_id: es8388_dac
+    adc_input_mic:
+      id: adc_input
+      name: ADC Input
+
+i2s_audio:
+  - id: i2s_bus
+    i2s_lrclk_pin: GPIO25
+    i2s_bclk_pin: GPIO27
+    i2s_mclk_pin: GPIO0
+
+microphone:
+  - platform: i2s_audio
+    id: a1s_adc
+    adc_type: external
+    i2s_din_pin: GPIO35
+    pdm: false
+    sample_rate: 48000
+    bits_per_sample: 16bit
+    channel: stereo
+
+sendspin:
+  id: sendspin_hub
+  task_stack_in_psram: true
+  source:
+    microphone:
+      microphone: a1s_adc
+      channels: [0, 1]
+    # Everything below defaults to sendspin-cpp's SourceRoleConfig defaults when omitted
+    # codec: opus            # pcm (default) or opus (exercises the encoder path)
+    # chunk_duration: 20ms
+    # capture_buffer: 150ms
+    # opus_bitrate: 128000
+    # opus_complexity: 2
