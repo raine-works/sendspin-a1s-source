@@ -131,6 +131,9 @@ class SendspinHub final : public Component,
   /// @brief Returns true if connected and paired (USER trust).
   bool is_paired() const;
 
+  /// @brief Returns the 107-char pairing token (SP:0...) for out-of-band server pairing.
+  std::string get_pairing_token() const;
+
   // --- Configuration setters (called from codegen) ---
 
   template<typename F> void add_group_update_callback(F &&callback) {

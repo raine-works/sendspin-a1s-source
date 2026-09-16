@@ -70,19 +70,28 @@ void SendspinHub::setup() {
     this->mark_failed();
     return;
   }
+
+  auto token = this->client_->pairing_token();
+  if (token.has_value()) {
+    ESP_LOGI(TAG, "Pairing Token: %s", token->c_str());
+  }
 }
 
 void SendspinHub::loop() { this->client_->loop(); }
 
 void SendspinHub::dump_config() {
   char mac_buf[MAC_ADDRESS_PRETTY_BUFFER_SIZE];
+  auto token = this->client_ != nullptr ? this->client_->pairing_token() : std::nullopt;
   ESP_LOGCONFIG(TAG,
                 "Sendspin Hub:\n"
                 "  Client ID: %s\n"
                 "  MAC Address: %s\n"
+                "  Pairing Token: %s\n"
                 "  Task stack in PSRAM: %s",
                 this->client_ != nullptr ? this->client_->client_id().c_str() : "pending",
-                get_mac_address_into_buffer(mac_buf), YESNO(this->task_stack_in_psram_));
+                get_mac_address_into_buffer(mac_buf),
+                token.has_value() ? token->c_str() : "none",
+                YESNO(this->task_stack_in_psram_));
 
 #ifdef USE_SENDSPIN_ARTWORK
   // Slot indices come from the order the image platform entries were declared, so the log is the
@@ -154,6 +163,16 @@ sendspin::ConnectionTrust SendspinHub::get_trust() const {
 
 bool SendspinHub::is_paired() const {
   return this->get_trust() == sendspin::ConnectionTrust::USER;
+}
+
+std::string SendspinHub::get_pairing_token() const {
+  if (this->is_ready() && this->client_ != nullptr) {
+    auto token = this->client_->pairing_token();
+    if (token.has_value()) {
+      return *token;
+    }
+  }
+  return "";
 }
 
 const char *SendspinHub::get_mac_address_into_buffer(std::span<char, MAC_ADDRESS_PRETTY_BUFFER_SIZE> buf) {

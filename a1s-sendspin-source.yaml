@@ -105,3 +105,13 @@ sendspin:
     # capture_buffer: 150ms
     # opus_bitrate: 128000
     # opus_complexity: 2
+
+text_sensor:
+  - platform: template
+    name: "Pairing Token"
+    id: sendspin_pairing_token
+    icon: "mdi:key-variant"
+    entity_category: diagnostic
+    lambda: |-
+      return id(sendspin_hub)->get_pairing_token();
+    update_interval: 10s
