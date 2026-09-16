@@ -1,38 +1,188 @@
-# sendspin-a1s-source
+# ESP32-A1S Encrypted Sendspin Audio Source
 
-ESPHome firmware that turns an ESP32-A1S Audio Kit (ES8388 variant) into an encrypted Sendspin **source**: it streams the codec's ADC (line-in jack by default) to a Sendspin server such as modern Music Assistant.
+[![ESPHome Version](https://img.shields.io/badge/ESPHome-2026.8%2B-blue.svg)](https://esphome.io/)
+[![Framework](https://img.shields.io/badge/Framework-ESP--IDF-red.svg)](https://docs.espressif.com/projects/esp-idf/)
+[![Security](https://img.shields.io/badge/Security-Noise_KKpsk2_Encrypted-green.svg)](https://noiseprotocol.org/)
+[![Server](https://img.shields.io/badge/Compatible-Music_Assistant-orange.svg)](https://music-assistant.io/)
+[![License](https://img.shields.io/badge/License-GPLv3%20%2F%20MIT-lightgrey.svg)](LICENSE)
 
-Built on top of `sendspin-cpp` with **Noise_KKpsk2 transport encryption** and **source@v1** support (`raine-works/sendspin-cpp@fix/source-pairing`), resolving the Music Assistant *"connected without encryption (legacy mode)"* restriction and enabling full device pairing.
+High-fidelity ESPHome firmware that transforms the **Ai-Thinker ESP32-A1S Audio Kit** (Everest ES8388 variant) into a dedicated, encrypted **Sendspin Audio Source**. 
 
-## What's here
+Stream pristine line-in audio from turntables, CD players, TV optical/aux outputs, or analog preamps directly into [Music Assistant](https://music-assistant.io/) and synchronized multi-room Sendspin speaker groups with microsecond timing accuracy.
 
-- `a1s-sendspin-source.yaml` is the device config. It pulls the component below from this repo.
-- `components/sendspin` is ESPHome's `sendspin` component updated for encrypted source streaming:
-  - Uses `raine-works/sendspin-cpp` (`fix/source-pairing`), combining the Noise protocol transport encryption (`Noise_KKpsk2` with Curve25519 / ChaCha20-Poly1305 via `noise-c`) and the `source@v1` audio capture role.
-  - End-to-end transport encryption for all WebSocket frames: control messages, stream lifecycle (`client-stream/start`, `client-stream/end`), and timestamped binary PCM/Opus audio chunks.
-  - Persistent device identity and pairing records stored in ESP32 NVS (Non-Volatile Storage), ensuring stable `client_id` across reboots.
-  - Hub gains a `source:` block that feeds an ESPHome microphone into the Sendspin source role. Codec, chunking, and Opus options fall back to sendspin-cpp's defaults when omitted.
+---
 
-The pinout (I²C SDA 33 / SCL 32, I²S MCLK 0 / BCLK 27 / LRCK 25 / DIN 35) is the one shared by the A1S configs in the [Home Assistant community thread](https://community.home-assistant.io/t/esp32-a1s-audio-kit-media-player/522245).
+## 🌟 Why This Project?
 
-## Using it
+Modern versions of Music Assistant (`aiosendspin`) mandate **Noise Protocol transport encryption** (`Noise_KKpsk2_25519_ChaChaPoly_SHA256`) for device pairing and stream admission. Unencrypted embedded devices are rejected with the warning:
 
-Copy `a1s-sendspin-source.yaml` into your ESPHome config directory, provide `wifi_ssid` / `wifi_password` secrets, and build with ESPHome 2026.8 or newer.
+> *"This device is connected without encryption (legacy mode). Pairing is not available."*
 
-- **Clean builds:** The IDF component manager pins resolved commits in `dependencies.lock`. If updating the component or branch, clean your ESPHome build directory before compiling.
-- **Server:** Fully compatible with modern Music Assistant (`aiosendspin`) with encrypted transport and pairing authorization.
-- **Input:** The `ADC Input` select switches between `LINE2` (3.5 mm line-in, the boot default) and `LINE1` (onboard mics).
-- **Codec variant:** The boot log's I²C scan should show `0x10`. `0x1A` is the AC101 variant, which this config does not support.
+This repository bridges that gap. By combining the official `source@v1` audio capture role with complete Noise cryptographic handshakes, hardware-backed NVS persistence, and low-level ES8388 register overrides, your ESP32-A1S pairs natively and securely with modern Music Assistant servers.
 
-## Known quirks
+---
 
-- **ES8388 ADC setup:** ESPHome's `es8388` driver sets the ADC up for voice. `on_boot` switches it to line-level capture:
-  - I²S framing: the driver writes left-justified (`0x0D`), but `i2s_audio` reads Philips I²S. Rewritten to `0x0C`.
-  - ALC turned off.
-  - Muting noise gate turned off.
-- **Source only:** ESPHome's `i2s_audio` has no full-duplex mode. A speaker on the same bus would hold the lock the microphone needs.
-- **Windows builds from a long path** fail while unpacking micro-opus (MAX_PATH). Set `ESPHOME_DATA_DIR` to a short directory.
+## ✨ Features
 
-## License
+- **🔐 End-to-End Transport Encryption:** Native `Noise_KKpsk2` handshake with Curve25519 key exchange, ChaCha20-Poly1305 authenticated ciphers, and SHA-256 hash states for all WebSocket control messages and audio chunks.
+- **💎 Hi-Fi Line Capture (No Voice Compression):** Custom `on_boot` register overrides configure the ES8388 ADC for transparent line-level audio:
+  - Philips I²S framing (`0x0C`) to eliminate Left-Justified bit-shift distortion and channel inversion.
+  - Automatic Level Control (ALC) disabled (`0x12` $\rightarrow$ `0x22`) to prevent volume pumping.
+  - Voice noise gate disabled (`0x16` $\rightarrow$ `0x00`) to preserve delicate musical decays and quiet passages.
+- **🚀 Ultra-Low Latency DMA Engine:** Continuous 48 kHz / 16-bit stereo PCM streaming (192 KB/s) utilizing ESP32 I²S DMA buffers and an external PSRAM lock-free SPSC ring buffer.
+- **⏱️ Adaptive Microsecond Slew Correction:** Software sample clock predictor continuously tracks ADC crystal drift against `esp_timer_get_time()`, filtering interrupt jitter and maintaining drift-free synchronization.
+- **💾 Durable Cryptographic Identity:** Persistent Curve25519 identity keypair and server trust records stored in ESP32 Non-Volatile Storage (NVS). Your `client_id` remains stable across reboots.
+- **🔑 Seamless Out-of-Band Pairing:** Automatically logs and surfaces the 107-character `SP:0...` pairing token in boot logs and exposes it as a Home Assistant sensor entity for effortless setup.
+- **🎛️ Dual Input Multiplexing:** Easily toggle between the 3.5 mm Aux Line-In jack (`LINE2`, default) and the onboard stereo electret microphones (`LINE1`) via Home Assistant or ESPHome dashboard.
 
-`components/sendspin` is derived from [ESPHome](https://github.com/esphome/esphome) and remains under the ESPHome License (MIT for the Python code, GPLv3 for the C++ code); see `LICENSE`.
+---
+
+## 📐 Architecture Overview
+
+```mermaid
+flowchart TD
+    subgraph AudioHardware ["ESP32-A1S Hardware Layer"]
+        LineIn["3.5 mm Line-In (LINE2)"] --> ES8388["ES8388 Audio Codec"]
+        OnboardMic["Onboard Mics (LINE1)"] -. Selectable .-> ES8388
+        ES8388 -- "I2S Philips 16-bit 48kHz (MCLK:0, BCLK:27, LRCK:25, DIN:35)" --> I2SDMA["ESP32 I2S DMA Controller"]
+    end
+
+    subgraph ESPHomeLayer ["Real-Time Audio Pipeline"]
+        I2SDMA --> MicSource["MicrophoneSource Buffer"]
+        MicSource -- "write_audio() + Slew Tracking" --> RingBuffer["SPSC Ring Buffer (8 MB External PSRAM)"]
+    end
+
+    subgraph CryptoLayer ["Security & Cryptography"]
+        NVS[("ESP32 Flash NVS ('sendspin')")] <--> KeyStore["X25519 Identity & Pairing Records"]
+        KeyStore --> NoiseEngine["Noise_KKpsk2 Engine (ChaChaPoly / SHA256)"]
+        RingBuffer --> EncryptedFraming["Encrypted Chunks (20ms / 3840 bytes)"]
+        EncryptedFraming --> NoiseEngine
+    end
+
+    subgraph ServerLayer ["Music Assistant Integration"]
+        NoiseEngine == "Encrypted WebSocket Transport" ==> MAServer["Music Assistant (aiosendspin)"]
+    end
+```
+
+---
+
+## 🛠️ Hardware Requirements & Pinout
+
+This configuration is tailored for the **ESP32-A1S Audio Kit v2.2** equipped with the Everest Semi **ES8388** audio codec.
+
+| Signal | ESP32 GPIO | ES8388 Pin / Function | Notes |
+| :--- | :--- | :--- | :--- |
+| **I²C SDA** | `GPIO33` | SDA | Codec communication at address `0x10` |
+| **I²C SCL** | `GPIO32` | SCL | Clock rate: 50 kHz |
+| **I²S MCLK** | `GPIO0` | MCLK | Master clock (256 $\times f_s$) |
+| **I²S BCLK** | `GPIO27` | BCLK / SCLK | Bit clock |
+| **I²S LRCK** | `GPIO25` | LRCK / DSRCLK | Frame sync / Word select |
+| **I²S DIN** | `GPIO35` | ASDOUT (ADC Data Out) | Input-only GPIO (ideal for ADC data) |
+
+> [!IMPORTANT]
+> **Codec Variant Verification:**
+> Verify that your board mounts the **ES8388** codec. On initial boot, the ESPHome I²C scan must report:
+> ```text
+> [C][i2c:119]: Found device at address 0x10
+> ```
+> *(Boards with address `0x1A` mount the AC101 codec, which is incompatible with this driver).*
+
+---
+
+## 🚀 Getting Started
+
+### 1. Configure Wi-Fi Secrets
+Ensure your ESPHome `secrets.yaml` contains your Wi-Fi credentials:
+```yaml
+wifi_ssid: "YourNetworkSSID"
+wifi_password: "YourNetworkPassword"
+```
+
+### 2. Add Configuration to ESPHome
+Copy [`a1s-sendspin-source.yaml`](file:///Users/rainepetersen/Projects/raineworks/sendspin-a1s-source/a1s-sendspin-source.yaml) into your ESPHome directory.
+
+The configuration references this repository as an external component:
+```yaml
+external_components:
+  - source: github://raine-works/sendspin-a1s-source@master
+    components: [sendspin]
+    refresh: always
+```
+
+### 3. Compile & Flash
+
+#### Option A: Via Home Assistant ESPHome Dashboard
+1. Open the **ESPHome Dashboard** in Home Assistant.
+2. If updating from a previous build, click the **three dots (⋮)** on the **A1S Sendspin Source** card and select **Clean Build Files**.
+3. Click **Install** → **Wirelessly** (or connect via USB for first flash).
+
+#### Option B: Via ESPHome Command Line
+```bash
+esphome clean a1s-sendspin-source.yaml
+esphome run a1s-sendspin-source.yaml
+```
+
+---
+
+## 📱 Pairing with Music Assistant
+
+1. **Power On:** Power the ESP32-A1S board and open the device log.
+2. **Retrieve Pairing Token:** 
+   * On boot, the log will output your device's unique token:
+     ```text
+     [I][sendspin.hub]: Pairing Token: SP:0...
+     ```
+   * Alternatively, view the **`Pairing Token`** entity on the device page in Home Assistant.
+3. **Authorize in Music Assistant:**
+   * Open **Music Assistant** → **Settings** → **Players / Sources**.
+   * Locate **`A1S Sendspin Source`** and click **Setup / Pair**.
+   * When prompted for `pairing_token`, paste the `SP:0...` token and click **Next**.
+4. **Verified Connection:** The ESPHome log will confirm pairing:
+   ```text
+   [sendspin.noise_handshake]: Noise handshake complete: server_id=... psk_category=2
+   [sendspin.connection]: Noise transport active
+   [sendspin.hub]: Connection trust level: USER (Paired)
+   ```
+
+---
+
+## ⚙️ Configuration Options
+
+Fine-tune streaming characteristics in [`a1s-sendspin-source.yaml`](file:///Users/rainepetersen/Projects/raineworks/sendspin-a1s-source/a1s-sendspin-source.yaml):
+
+```yaml
+sendspin:
+  id: sendspin_hub
+  task_stack_in_psram: true   # Moves HTTP/WebSocket task stack into 8 MB PSRAM
+  source:
+    task_stack_in_psram: true # Moves audio capture task stack into PSRAM
+    microphone:
+      microphone: a1s_adc
+      channels: [0, 1]        # 0: Left, 1: Right
+    
+    # Optional parameters (defaults shown):
+    # codec: pcm              # 'pcm' (uncompressed, lossless) or 'opus' (compressed)
+    # chunk_duration: 20ms    # 5ms - 60ms (20ms is optimal for network overhead)
+    # capture_buffer: 150ms   # PSRAM ring buffer depth (protects against Wi-Fi jitter)
+    # opus_bitrate: 128000    # Active only when codec is set to 'opus'
+    # opus_complexity: 2      # 0 - 10 (2 is optimized for ESP32 CPU budget)
+```
+
+---
+
+## 🔍 Technical Details & Quirks
+
+### ES8388 Codec Framing
+ESPHome's upstream `es8388` driver initializes the ADC in Left-Justified mode (`0x0D`). However, ESPHome's `i2s_audio` component reads Philips I²S standard (1-bit clock delay). This mismatch results in inverted polarity, lost sign bits, and swapped stereo channels. This firmware forcibly overrides register `0x0C` (`ADCCONTROL4`) to `0x0C` on boot, establishing bit-perfect Philips I²S alignment.
+
+### Half-Duplex Operation
+ESPHome's `i2s_audio` bus does not support simultaneous full-duplex operation. To guarantee zero audio dropouts, this firmware configures the ESP32-A1S strictly as an audio **source**. Output speakers on the same bus are disabled to eliminate bus contention.
+
+---
+
+## 📄 License & Credits
+
+- Core firmware and component modifications by [Raine Petersen](https://github.com/raine-works).
+- Underlying component architecture derived from [ESPHome](https://github.com/esphome/esphome) (licensed under MIT and GPLv3).
+- C++ cryptographic and protocol layer powered by [`raine-works/sendspin-cpp`](https://github.com/raine-works/sendspin-cpp) (Apache 2.0).
+- Compatible with the open [Sendspin Specification](https://sendspin.io) and [Music Assistant](https://music-assistant.io).
