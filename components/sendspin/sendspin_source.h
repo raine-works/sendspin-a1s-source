@@ -11,6 +11,7 @@
 
 #include <sendspin/source_role.h>
 
+#include <atomic>
 #include <cstdint>
 
 namespace esphome::sendspin_ {
@@ -24,6 +25,7 @@ class SendspinSource final : public SendspinChild, public sendspin::SourceRoleLi
   explicit SendspinSource(microphone::MicrophoneSource *microphone_source) : microphone_source_(microphone_source) {}
 
   void setup() override;
+  void loop() override;
   void dump_config() override;
 
   /// @brief Sets the role config's non-format fields (codec, chunking, Opus tuning). Called from codegen.
@@ -46,6 +48,12 @@ class SendspinSource final : public SendspinChild, public sendspin::SourceRoleLi
 
   // Microphone task only: predicted capture time of the next block's first sample
   int64_t next_capture_time_us_{0};
+
+  // Streaming statistics
+  std::atomic<uint64_t> total_bytes_streamed_{0};
+  std::atomic<uint32_t> dropped_writes_{0};
+  uint32_t stream_start_ms_{0};
+  uint32_t last_stats_log_ms_{0};
 };
 
 }  // namespace esphome::sendspin_

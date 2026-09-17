@@ -110,9 +110,9 @@ sendspin:
     chunk_duration: 40ms
     # 1000ms (1 second) ring buffer in PSRAM protects against transient Wi-Fi jitter
     capture_buffer: 1000ms
-    # codec: opus            # Optional: 128kbps Opus for bandwidth-constrained Wi-Fi
-    # opus_bitrate: 128000
-    # opus_complexity: 2
+    codec: opus
+    opus_bitrate: 128000
+    opus_complexity: 2
 
 text_sensor:
   - platform: template
@@ -121,5 +121,9 @@ text_sensor:
     icon: "mdi:key-variant"
     entity_category: diagnostic
     lambda: |-
-      return id(sendspin_hub)->get_pairing_token();
+      auto token = id(sendspin_hub)->get_pairing_token();
+      if (!token.empty() && id(sendspin_pairing_token).state != token) {
+        return token;
+      }
+      return {};
     update_interval: 10s

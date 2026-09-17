@@ -25,10 +25,12 @@ This repository provides complete, production-ready ESPHome firmware for the Ai-
   - Philips I²S framing (`0x0C`) to eliminate Left-Justified bit-shift distortion and channel inversion.
   - Automatic Level Control (ALC) disabled (`0x12` $\rightarrow$ `0x22`) to prevent volume pumping.
   - Voice noise gate disabled (`0x16` $\rightarrow$ `0x00`) to preserve delicate musical decays and quiet passages.
-- **🚀 Ultra-Low Latency DMA Engine:** Continuous 48 kHz / 16-bit stereo PCM streaming (192 KB/s) utilizing ESP32 I²S DMA buffers and an external PSRAM lock-free SPSC ring buffer.
+- **🚀 Ultra-Low Latency DMA Engine with Opus & PCM Support:** Supports both broadcast-grade Opus compression (128 kbps, 16 KB/s) and uncompressed 48 kHz / 16-bit stereo PCM streaming (1.536 Mbps). Utilizing ESP32 I²S DMA buffers and a 1,000 ms external PSRAM lock-free SPSC ring buffer to absorb Wi-Fi jitter.
+- **⚡ 12× Bandwidth Reduction via Opus:** Highly optimized fixed-point `micro-opus` encoding in external PSRAM reduces Wi-Fi bandwidth by ~92%, packing 40ms chunks into compact single-packet payloads (< 640 B) to eliminate packet fragmentation and dropouts on 2.4 GHz Wi-Fi.
 - **⏱️ Adaptive Microsecond Slew Correction:** Software sample clock predictor continuously tracks ADC crystal drift against `esp_timer_get_time()`, filtering interrupt jitter and maintaining drift-free synchronization.
 - **💾 Durable Cryptographic Identity:** Persistent Curve25519 identity keypair and server trust records stored in ESP32 Non-Volatile Storage (NVS). Your `client_id` remains stable across reboots.
-- **🔑 Seamless Out-of-Band Pairing:** Automatically logs and surfaces the 107-character `SP:0...` pairing token in boot logs and exposes it as a Home Assistant sensor entity for effortless setup.
+- **🔑 Clean Out-of-Band Pairing:** Automatically logs and surfaces the 107-character `SP:0...` pairing token once on boot and exposes it as a deduplicated Home Assistant sensor entity (zero recurring log spam).
+- **📊 Real-Time Streaming Telemetry:** Active streaming metrics logged periodically in the background (elapsed duration, total KB sent, and write drop count).
 - **🎛️ Dual Input Multiplexing:** Easily toggle between the 3.5 mm Aux Line-In jack (`LINE2`, default) and the onboard stereo electret microphones (`LINE1`) via Home Assistant or ESPHome dashboard.
 
 ---
@@ -104,18 +106,26 @@ esphome run a1s-sendspin-source.yaml
    * Open **Music Assistant** → **Settings** → **Players / Sources**.
    * Locate **`A1S Sendspin Source`** and click **Setup / Pair**.
    * When prompted for `pairing_token`, paste the `SP:0...` token and click **Next**.
-4. **Verified Connection:** The ESPHome log will confirm pairing:
-   ```text
-   [sendspin.noise_handshake]: Noise handshake complete: server_id=... psk_category=2
-   [sendspin.connection]: Noise transport active
-   [sendspin.hub]: Connection trust level: USER (Paired)
-   ```
+4. **Verified Connection & Streaming:**
+   * The log will confirm pairing:
+     ```text
+     [sendspin.noise_handshake]: Noise handshake complete: server_id=... psk_category=2
+     [sendspin.connection]: Noise transport active
+     [sendspin.hub]: Connection trust level: USER (Paired)
+     ```
+   * Once playback or capture is initiated from Music Assistant, streaming starts and logs real-time telemetry every 5 seconds:
+     ```text
+     [sendspin.source]: Server started stream (codec: Opus, 48000 Hz, 2 ch, 16 bit); starting microphone
+     [sendspin.source]: Streaming: 5s active | 80 KB sent | 0 drops
+     [sendspin.source]: Streaming: 10s active | 160 KB sent | 0 drops
+     [sendspin.source]: Server stopped stream; duration: 45s, sent: 720 KB, drops: 0; stopping microphone
+     ```
 
 ---
 
 ## ⚙️ Configuration Options
 
-Fine-tune streaming characteristics in [`a1s-sendspin-source.yaml`](file:///Users/rainepetersen/Projects/raineworks/sendspin-a1s-source/a1s-sendspin-source.yaml):
+Streaming parameters in [`a1s-sendspin-source.yaml`](file:///Users/rainepetersen/Projects/raineworks/sendspin-a1s-source/a1s-sendspin-source.yaml) are tuned out-of-the-box for optimal 2.4 GHz Wi-Fi reliability:
 
 ```yaml
 sendspin:
@@ -127,12 +137,26 @@ sendspin:
       microphone: a1s_adc
       channels: [0, 1]        # 0: Left, 1: Right
     
-    # Optional parameters (defaults shown):
-    # codec: pcm              # 'pcm' (uncompressed, lossless) or 'opus' (compressed)
-    # chunk_duration: 20ms    # 5ms - 60ms (20ms is optimal for network overhead)
-    # capture_buffer: 150ms   # PSRAM ring buffer depth (protects against Wi-Fi jitter)
-    # opus_bitrate: 128000    # Active only when codec is set to 'opus'
-    # opus_complexity: 2      # 0 - 10 (2 is optimized for ESP32 CPU budget)
+    # Streaming parameters:
+    codec: opus               # 'opus' (recommended for Wi-Fi) or 'pcm' (uncompressed 1.536 Mbps)
+    opus_bitrate: 128000      # 128 kbps transparent stereo audio (CD quality)
+    opus_complexity: 2        # Fixed-point complexity: 2 (~10-15% of one 240 MHz CPU core)
+    chunk_duration: 40ms      # 40ms frames = 25 packets/s (eliminates queue congestion)
+    capture_buffer: 1000ms    # 1-second PSRAM ring buffer to absorb Wi-Fi latency jitter
+
+text_sensor:
+  - platform: template
+    name: "Pairing Token"
+    id: sendspin_pairing_token
+    icon: "mdi:key-variant"
+    entity_category: diagnostic
+    lambda: |-
+      auto token = id(sendspin_hub)->get_pairing_token();
+      if (!token.empty() && id(sendspin_pairing_token).state != token) {
+        return token;
+      }
+      return {};
+    update_interval: 10s
 ```
 
 ---

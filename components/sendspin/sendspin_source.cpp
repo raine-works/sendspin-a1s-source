@@ -2,6 +2,7 @@
 
 #if defined(USE_ESP32) && defined(USE_SENDSPIN_SOURCE)
 
+#include "esphome/core/hal.h"
 #include "esphome/core/log.h"
 
 #include <esp_timer.h>
@@ -49,8 +50,28 @@ void SendspinSource::setup() {
     }
     this->next_capture_time_us_ = capture_time_us + block_us;
 
-    this->source_role_->write_audio(data.data(), data.size(), capture_time_us);
+    if (this->source_role_->write_audio(data.data(), data.size(), capture_time_us)) {
+      this->total_bytes_streamed_.fetch_add(data.size(), std::memory_order_relaxed);
+    } else {
+      this->dropped_writes_.fetch_add(1, std::memory_order_relaxed);
+    }
   });
+}
+
+void SendspinSource::loop() {
+  if (this->source_role_ == nullptr || !this->source_role_->is_streaming()) {
+    return;
+  }
+
+  const uint32_t now = millis();
+  if (now - this->last_stats_log_ms_ >= 5000) {
+    this->last_stats_log_ms_ = now;
+    const uint32_t duration_s = (now - this->stream_start_ms_) / 1000;
+    const uint32_t kb_sent = static_cast<uint32_t>(this->total_bytes_streamed_.load(std::memory_order_relaxed) / 1024);
+    const uint32_t drops = this->dropped_writes_.load(std::memory_order_relaxed);
+    ESP_LOGI(TAG, "Streaming: %" PRIu32 "s active | %" PRIu32 " KB sent | %" PRIu32 " drops",
+             duration_s, kb_sent, drops);
+  }
 }
 
 void SendspinSource::dump_config() {
@@ -77,14 +98,25 @@ sendspin::SourceRoleConfig SendspinSource::build_role_config() const {
 
 // THREAD CONTEXT: Main loop (fired from the hub's client loop())
 void SendspinSource::on_streaming_started() {
-  ESP_LOGI(TAG, "Server started the stream; starting microphone");
+  ESP_LOGI(TAG, "Server started stream (codec: %s, %" PRIu32 " Hz, %u ch, %u bit); starting microphone",
+           this->role_config_.codec == sendspin::SendspinCodecFormat::OPUS ? "Opus" : "PCM",
+           this->stream_info_.get_sample_rate(), this->stream_info_.get_channels(),
+           this->stream_info_.get_bits_per_sample());
   this->next_capture_time_us_ = 0;
+  this->total_bytes_streamed_.store(0, std::memory_order_relaxed);
+  this->dropped_writes_.store(0, std::memory_order_relaxed);
+  this->stream_start_ms_ = millis();
+  this->last_stats_log_ms_ = millis();
   this->microphone_source_->start();
 }
 
 // THREAD CONTEXT: Main loop (fired from the hub's client loop())
 void SendspinSource::on_streaming_stopped() {
-  ESP_LOGI(TAG, "Server stopped the stream; stopping microphone");
+  const uint32_t duration_s = (millis() - this->stream_start_ms_) / 1000;
+  const uint32_t kb_sent = static_cast<uint32_t>(this->total_bytes_streamed_.load(std::memory_order_relaxed) / 1024);
+  const uint32_t drops = this->dropped_writes_.load(std::memory_order_relaxed);
+  ESP_LOGI(TAG, "Server stopped stream; duration: %" PRIu32 "s, sent: %" PRIu32 " KB, drops: %" PRIu32 "; stopping microphone",
+           duration_s, kb_sent, drops);
   this->microphone_source_->stop();
 }
 
