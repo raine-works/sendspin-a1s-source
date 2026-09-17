@@ -131,7 +131,6 @@ binary_sensor:
     device_class: sound
     lambda: |-
       return id(sendspin_source)->is_signal_present();
-    update_interval: 1s
 
 sensor:
   - platform: template
