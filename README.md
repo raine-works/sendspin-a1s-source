@@ -31,8 +31,8 @@ This repository provides complete, production-ready ESPHome firmware for the Ai-
   - Philips I²S framing (`0x0C`) to eliminate Left-Justified bit-shift distortion and channel inversion.
   - Automatic Level Control (ALC) disabled (`0x12` $\rightarrow$ `0x22`) to prevent volume pumping.
   - Voice noise gate disabled (`0x16` $\rightarrow$ `0x00`) to preserve delicate musical decays and quiet passages.
-- **🚀 Ultra-Low Latency DMA Engine with Opus & PCM Support:** Supports both broadcast-grade Opus compression (128 kbps, 16 KB/s) and uncompressed 48 kHz / 16-bit stereo PCM streaming (1.536 Mbps). Utilizing ESP32 I²S DMA buffers and a 1,000 ms external PSRAM lock-free SPSC ring buffer to absorb Wi-Fi jitter.
-- **⚡ 12× Bandwidth Reduction via Opus:** Highly optimized fixed-point `micro-opus` encoding in external PSRAM reduces Wi-Fi bandwidth by ~92%, packing 40ms chunks into compact single-packet payloads (< 640 B) to eliminate packet fragmentation and dropouts on 2.4 GHz Wi-Fi.
+- **🚀 Ultra-Low Latency DMA Engine with Opus & PCM Support:** Supports both broadcast-grade Opus compression (128 kbps, 16 KB/s) and uncompressed 48 kHz / 16-bit stereo PCM streaming (1.536 Mbps). Utilizing ESP32 I²S DMA buffers and a 2,000 ms external PSRAM lock-free SPSC ring buffer to absorb Wi-Fi jitter.
+- **⚡ 12× Bandwidth Reduction via Opus:** Highly optimized fixed-point `micro-opus` encoding with working memory in fast internal SRAM reduces Wi-Fi bandwidth by ~92%, packing 40ms chunks into compact single-packet payloads (< 640 B) to eliminate packet fragmentation and dropouts on 2.4 GHz Wi-Fi.
 - **⏱️ Adaptive Microsecond Slew Correction:** Software sample clock predictor continuously tracks ADC crystal drift against `esp_timer_get_time()`, filtering interrupt jitter and maintaining drift-free synchronization.
 - **💾 Durable Cryptographic Identity:** Persistent Curve25519 identity keypair and server trust records stored in ESP32 Non-Volatile Storage (NVS). Your `client_id` remains stable across reboots.
 - **🔑 Clean Out-of-Band Pairing:** Automatically logs and surfaces the 107-character `SP:0...` pairing token once on boot and exposes it as a deduplicated Home Assistant sensor entity (zero recurring log spam).
@@ -120,12 +120,13 @@ esphome run a1s-sendspin-source.yaml
      [sendspin.hub]: Connection trust level: USER (Paired)
      ```
    * Once playback or capture is initiated from Music Assistant, streaming starts and logs real-time telemetry every 5 seconds:
-     ```text
-     [sendspin.source]: Server started stream (codec: Opus, 48000 Hz, 2 ch, 16 bit); starting microphone
-     [sendspin.source]: Streaming: 5s active | 80 KB sent | 0 drops
-     [sendspin.source]: Streaming: 10s active | 160 KB sent | 0 drops
-     [sendspin.source]: Server stopped stream; duration: 45s, sent: 720 KB, drops: 0; stopping microphone
-     ```
+      ```text
+      [sendspin.source]: Server started stream (codec: Opus, 24000 Hz, 2 ch, 16 bit); internal free: 141224 B, max block: 110592 B; starting microphone
+      [sendspin.source_encoder]: Opus encode: 14850 us (3840 bytes in -> 639 bytes out)
+      [sendspin.source]: Streaming: 5s active | 80 KB sent | 0 drops
+      [sendspin.source]: Streaming: 10s active | 160 KB sent | 0 drops
+      [sendspin.source]: Server stopped stream; duration: 45s, sent: 720 KB, drops: 0; stopping microphone
+      ```
 
 ---
 
@@ -134,6 +135,26 @@ esphome run a1s-sendspin-source.yaml
 Streaming parameters in [`a1s-sendspin-source.yaml`](file:///Users/rainepetersen/Projects/raineworks/sendspin-a1s-source/a1s-sendspin-source.yaml) are tuned out-of-the-box for optimal 2.4 GHz Wi-Fi reliability:
 
 ```yaml
+esp32:
+  board: esp-wrover-kit
+  framework:
+    type: esp-idf
+    advanced:
+      minimum_chip_revision: "3.1"
+    sdkconfig_options:
+      CONFIG_COMPILER_OPTIMIZATION_PERF: y # Enables -O2 compiler optimization for real-time DSP
+  cpu_frequency: 240MHz
+
+microphone:
+  - platform: i2s_audio
+    id: a1s_adc
+    adc_type: external
+    i2s_din_pin: GPIO35
+    pdm: false
+    sample_rate: 24000        # 24 kHz Superwideband stereo (recommended for real-time Opus on ESP32 LX6)
+    bits_per_sample: 16bit
+    channel: stereo
+
 sendspin:
   id: sendspin_hub
   task_stack_in_psram: true   # Moves HTTP/WebSocket task stack into 8 MB PSRAM
@@ -148,7 +169,7 @@ sendspin:
     opus_bitrate: 128000      # 128 kbps transparent stereo audio (CD quality)
     opus_complexity: 0        # Fixed-point complexity: 0 (fastest, optimized for ESP32 LX6 CPU budget)
     chunk_duration: 40ms      # 40ms frames = 25 packets/s (eliminates queue congestion)
-    capture_buffer: 1000ms    # 1-second PSRAM ring buffer to absorb Wi-Fi latency jitter
+    capture_buffer: 2000ms    # 2-second PSRAM ring buffer to absorb Wi-Fi latency jitter
 
 text_sensor:
   - platform: template
@@ -168,6 +189,13 @@ text_sensor:
 ---
 
 ## 🔍 Technical Details & Quirks
+
+### Real-Time Opus Optimization (ESP32 Xtensa LX6 Dual-Core Architecture)
+Encoding real-time stereo audio in Opus on an original ESP32 (Xtensa LX6 @ 240 MHz without vector DSP extensions) requires careful task isolation and memory management:
+- **Internal SRAM for DSP Scratch Buffers:** The `micro-opus` pseudostack (`CONFIG_OPUS_PSEUDOSTACK_SIZE = 60000`), encoder state, and chunk staging buffers reside in fast internal SRAM. Allocating them in external PSRAM incurs a severe SPI bus latency penalty that slows encoding by ~2×.
+- **Dedicated Core 1 Execution:** The source streaming task (`SsSrc`) is pinned to **Core 1** at priority 6. This isolates encoding from Core 0, which handles Wi-Fi PHY/MAC interrupts, the LwIP TCP/IP stack, flash writes, and the main ESPHome loop.
+- **Inter-Frame Prediction Disabled:** Setting `OPUS_SET_PREDICTION_DISABLED(1)` eliminates redundant inter-frame correlation calculations in CELT, saving ~1–2 ms per chunk while ensuring each network packet is independently decodable without frame dependencies.
+- **24 kHz Superwideband Stereo:** Sizing the capture rate to 24 kHz provides high-fidelity audio (up to 12 kHz frequency response) while taking only ~15 ms to encode a 40 ms chunk (~37% CPU load on Core 1), leaving ~25 ms of idle headroom per chunk to guarantee zero buffer overruns or drops even during complex musical passages. Uncompressed 48 kHz stereo is also supported via `codec: pcm`.
 
 ### ES8388 Codec Framing
 ESPHome's upstream `es8388` driver initializes the ADC in Left-Justified mode (`0x0D`). However, ESPHome's `i2s_audio` component reads Philips I²S standard (1-bit clock delay). This mismatch results in inverted polarity, lost sign bits, and swapped stereo channels. This firmware forcibly overrides register `0x0C` (`ADCCONTROL4`) to `0x0C` on boot, establishing bit-perfect Philips I²S alignment.
