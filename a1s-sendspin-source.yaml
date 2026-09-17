@@ -46,8 +46,6 @@ psram:
 logger:
 
 api:
-  encryption:
-    key: !secret a1s_sendspin_source__encryption_key
 
 ota:
   - platform: esphome

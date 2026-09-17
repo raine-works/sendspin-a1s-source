@@ -175,6 +175,9 @@ ESPHome's upstream `es8388` driver initializes the ADC in Left-Justified mode (`
 ### Half-Duplex Operation
 ESPHome's `i2s_audio` bus does not support simultaneous full-duplex operation. To guarantee zero audio dropouts, this firmware configures the ESP32-A1S strictly as an audio **source**. Output speakers on the same bus are disabled to eliminate bus contention.
 
+### Native API Encryption Conflict
+Do **not** enable native API encryption (`api: encryption: key: ...`) or OTA encryption in ESPHome with this firmware. ESPHome's internal native API encryption component enforces an aggressive binary size optimization (`NOISE_USE_PROTOCOL_NAME_TABLE=0`) that strips all Noise protocol patterns except `Noise_NNpsk0`, colliding with and breaking Sendspin's required `Noise_KKpsk2` handshake (`error 0x4503: 17667`). Sendspin natively handles its own end-to-end `Noise_KKpsk2` transport encryption for all streaming audio and control traffic.
+
 ---
 
 ## ☕ Support
