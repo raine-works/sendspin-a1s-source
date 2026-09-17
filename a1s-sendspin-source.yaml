@@ -39,7 +39,8 @@ esp32:
     type: esp-idf
     advanced:
       minimum_chip_revision: "3.1"
-      sram1_as_iram: true
+    sdkconfig_options:
+      CONFIG_COMPILER_OPTIMIZATION_PERF: y
   cpu_frequency: 240MHz
 
 psram:

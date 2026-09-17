@@ -5,6 +5,7 @@
 #include "esphome/core/hal.h"
 #include "esphome/core/log.h"
 
+#include <esp_heap_caps.h>
 #include <esp_timer.h>
 
 #include <cinttypes>
@@ -79,10 +80,12 @@ void SendspinSource::dump_config() {
                 "Sendspin Source:\n"
                 "  Codec: %s\n"
                 "  Format: %" PRIu32 " Hz, %u channel(s), %u bits per sample\n"
-                "  Chunk duration: %" PRIu32 " ms",
+                "  Chunk duration: %" PRIu32 " ms\n"
+                "  Opus complexity: %u",
                 this->role_config_.codec == sendspin::SendspinCodecFormat::OPUS ? "Opus" : "PCM",
                 this->stream_info_.get_sample_rate(), this->stream_info_.get_channels(),
-                this->stream_info_.get_bits_per_sample(), this->role_config_.chunk_duration_ms);
+                this->stream_info_.get_bits_per_sample(), this->role_config_.chunk_duration_ms,
+                this->role_config_.opus_complexity);
 }
 
 sendspin::SourceRoleConfig SendspinSource::build_role_config() const {
@@ -98,10 +101,14 @@ sendspin::SourceRoleConfig SendspinSource::build_role_config() const {
 
 // THREAD CONTEXT: Main loop (fired from the hub's client loop())
 void SendspinSource::on_streaming_started() {
-  ESP_LOGI(TAG, "Server started stream (codec: %s, %" PRIu32 " Hz, %u ch, %u bit); starting microphone",
+  ESP_LOGI(TAG,
+           "Server started stream (codec: %s, %" PRIu32 " Hz, %u ch, %u bit); internal free: %u B, max block: %u B; "
+           "starting microphone",
            this->role_config_.codec == sendspin::SendspinCodecFormat::OPUS ? "Opus" : "PCM",
            this->stream_info_.get_sample_rate(), this->stream_info_.get_channels(),
-           this->stream_info_.get_bits_per_sample());
+           this->stream_info_.get_bits_per_sample(),
+           static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
+           static_cast<unsigned>(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)));
   this->next_capture_time_us_ = 0;
   this->total_bytes_streamed_.store(0, std::memory_order_relaxed);
   this->dropped_writes_.store(0, std::memory_order_relaxed);

@@ -23,7 +23,7 @@ CONF_OPUS_COMPLEXITY = "opus_complexity"
 
 # sendspin-cpp build with Noise_KKpsk2 transport encryption and source-role support
 SENDSPIN_CPP_REPO = "https://github.com/raine-works/sendspin-cpp.git"
-SENDSPIN_CPP_REF = "90cb79966faf41f6533d975848d569ef8f11549d"
+SENDSPIN_CPP_REF = "86b1036a5a8ab587d37aad4b9da97f7e55cee2f4"
 
 # sendspin-cpp library lives in the global `sendspin` namespace.
 sendspin_library_ns = cg.global_ns.namespace("sendspin")
@@ -142,12 +142,17 @@ async def to_code(config: ConfigType) -> None:
         esp32.add_idf_sdkconfig_option("CONFIG_HTTPD_QUEUE_WORK_BLOCKING", True)
         # Increase the UDP control mailbox size (default 6) to 32 for higher queue capacity
         esp32.add_idf_sdkconfig_option("CONFIG_LWIP_UDP_RECVMBOX_SIZE", 32)
-        # Route micro-opus pseudostack and codec state to PSRAM to prevent internal RAM exhaustion
+        # Route micro-opus pseudostack and codec state to internal RAM with PSRAM fallback for real-time encode speed
         esp32.add_idf_sdkconfig_option("CONFIG_OPUS_NONTHREADSAFE_PSEUDOSTACK", True)
         esp32.add_idf_sdkconfig_option("CONFIG_OPUS_THREADSAFE_PSEUDOSTACK", False)
         esp32.add_idf_sdkconfig_option("CONFIG_OPUS_USE_ALLOCA", False)
-        esp32.add_idf_sdkconfig_option("CONFIG_OPUS_PSEUDOSTACK_PREFER_PSRAM", True)
-        esp32.add_idf_sdkconfig_option("CONFIG_OPUS_STATE_PREFER_PSRAM", True)
+        esp32.add_idf_sdkconfig_option("CONFIG_OPUS_PSEUDOSTACK_PREFER_INTERNAL", True)
+        esp32.add_idf_sdkconfig_option("CONFIG_OPUS_PSEUDOSTACK_PREFER_PSRAM", False)
+        esp32.add_idf_sdkconfig_option("CONFIG_OPUS_PSEUDOSTACK_SIZE", 60000)
+        esp32.add_idf_sdkconfig_option("CONFIG_OPUS_STATE_PREFER_INTERNAL", True)
+        esp32.add_idf_sdkconfig_option("CONFIG_OPUS_STATE_PREFER_PSRAM", False)
+        esp32.add_idf_sdkconfig_option("CONFIG_OPUS_ENABLE_XTENSA_OPTIMIZATIONS", True)
+        esp32.add_idf_sdkconfig_option("CONFIG_COMPILER_OPTIMIZATION_PERF", True)
 
         mic_source = await microphone.microphone_source_to_code(
             source_config[CONF_MICROPHONE]
