@@ -101,10 +101,11 @@ sendspin:
     microphone:
       microphone: a1s_adc
       channels: [0, 1]
-    # Everything below defaults to sendspin-cpp's SourceRoleConfig defaults when omitted
-    # codec: opus            # pcm (default) or opus (exercises the encoder path)
-    # chunk_duration: 20ms
-    # capture_buffer: 150ms
+    # 40ms chunks cut packet rate in half (25/sec instead of 50/sec), preventing queue congestion
+    chunk_duration: 40ms
+    # 500ms ring buffer in PSRAM protects against transient Wi-Fi jitter
+    capture_buffer: 500ms
+    # codec: opus            # Optional: 128kbps Opus for bandwidth-constrained Wi-Fi
     # opus_bitrate: 128000
     # opus_complexity: 2
 

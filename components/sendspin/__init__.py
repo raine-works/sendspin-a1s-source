@@ -138,6 +138,8 @@ async def to_code(config: ConfigType) -> None:
     if (source_config := config.get(CONF_SOURCE)) is not None:
         cg.add_define("USE_SENDSPIN_SOURCE", True)
         esp32.add_idf_sdkconfig_option("CONFIG_SENDSPIN_ENABLE_SOURCE", True)
+        # Block rather than drop when the httpd control queue fills during Wi-Fi jitter
+        esp32.add_idf_sdkconfig_option("CONFIG_HTTPD_QUEUE_WORK_BLOCKING", True)
 
         mic_source = await microphone.microphone_source_to_code(
             source_config[CONF_MICROPHONE]
