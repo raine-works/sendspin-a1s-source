@@ -6,6 +6,12 @@
 [![Server](https://img.shields.io/badge/Compatible-Music_Assistant-orange.svg)](https://music-assistant.io/)
 [![License](https://img.shields.io/badge/License-GPLv3%20%2F%20MIT-lightgrey.svg)](LICENSE)
 
+<br>
+
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy_Me_A_Coffee-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/raineworks)
+
+<br>
+
 High-fidelity ESPHome firmware that transforms the **Ai-Thinker ESP32-A1S Audio Kit** (Everest ES8388 variant) into a dedicated, encrypted **Sendspin Audio Source**. 
 
 Stream pristine line-in audio from turntables, CD players, TV optical/aux outputs, or analog preamps directly into [Music Assistant](https://music-assistant.io/) and synchronized multi-room Sendspin speaker groups with microsecond timing accuracy.
@@ -140,7 +146,7 @@ sendspin:
     # Streaming parameters:
     codec: opus               # 'opus' (recommended for Wi-Fi) or 'pcm' (uncompressed 1.536 Mbps)
     opus_bitrate: 128000      # 128 kbps transparent stereo audio (CD quality)
-    opus_complexity: 2        # Fixed-point complexity: 2 (~10-15% of one 240 MHz CPU core)
+    opus_complexity: 0        # Fixed-point complexity: 0 (fastest, optimized for ESP32 LX6 CPU budget)
     chunk_duration: 40ms      # 40ms frames = 25 packets/s (eliminates queue congestion)
     capture_buffer: 1000ms    # 1-second PSRAM ring buffer to absorb Wi-Fi latency jitter
 
@@ -168,6 +174,14 @@ ESPHome's upstream `es8388` driver initializes the ADC in Left-Justified mode (`
 
 ### Half-Duplex Operation
 ESPHome's `i2s_audio` bus does not support simultaneous full-duplex operation. To guarantee zero audio dropouts, this firmware configures the ESP32-A1S strictly as an audio **source**. Output speakers on the same bus are disabled to eliminate bus contention.
+
+---
+
+## ☕ Support
+
+If you find this project helpful, consider buying me a coffee to support continued maintenance and development:
+
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy_Me_A_Coffee-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/raineworks)
 
 ---
 

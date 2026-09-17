@@ -46,6 +46,8 @@ psram:
 logger:
 
 api:
+  encryption:
+    key: !secret a1s_sendspin_source__encryption_key
 
 ota:
   - platform: esphome
@@ -112,7 +114,7 @@ sendspin:
     capture_buffer: 1000ms
     codec: opus
     opus_bitrate: 128000
-    opus_complexity: 2
+    opus_complexity: 0
 
 text_sensor:
   - platform: template
