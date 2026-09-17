@@ -105,6 +105,7 @@ sendspin:
   id: sendspin_hub
   task_stack_in_psram: true
   source:
+    id: sendspin_source
     task_stack_in_psram: true
     microphone:
       microphone: a1s_adc
@@ -116,6 +117,35 @@ sendspin:
     codec: opus
     opus_bitrate: 128000
     opus_complexity: 0
+    # Automatic turntable needle-drop & audio signal sensing (Sendspin line_sense)
+    line_sense: true
+    signal_threshold: -42dB
+    silence_timeout: 20s
+    debounce_duration: 200ms
+
+binary_sensor:
+  - platform: template
+    name: "Audio Signal"
+    id: sendspin_audio_signal
+    icon: "mdi:waveform"
+    device_class: sound
+    lambda: |-
+      return id(sendspin_source)->is_signal_present();
+    update_interval: 1s
+
+sensor:
+  - platform: template
+    name: "Audio Peak Level"
+    id: sendspin_audio_peak
+    icon: "mdi:volume-high"
+    unit_of_measurement: "dBFS"
+    accuracy_decimals: 1
+    entity_category: diagnostic
+    lambda: |-
+      int16_t peak = id(sendspin_source)->get_last_peak();
+      if (peak <= 0) return -96.0f;
+      return 20.0f * log10f(static_cast<float>(peak) / 32767.0f);
+    update_interval: 1s
 
 text_sensor:
   - platform: template

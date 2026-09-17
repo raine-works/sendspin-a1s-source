@@ -18,8 +18,12 @@ DOMAIN = "sendspin"
 CONF_CAPTURE_BUFFER = "capture_buffer"
 CONF_CHUNK_DURATION = "chunk_duration"
 CONF_CODEC = "codec"
+CONF_DEBOUNCE_DURATION = "debounce_duration"
+CONF_LINE_SENSE = "line_sense"
 CONF_OPUS_BITRATE = "opus_bitrate"
 CONF_OPUS_COMPLEXITY = "opus_complexity"
+CONF_SIGNAL_THRESHOLD = "signal_threshold"
+CONF_SILENCE_TIMEOUT = "silence_timeout"
 
 # sendspin-cpp build with Noise_KKpsk2 transport encryption and source-role support
 SENDSPIN_CPP_REPO = "https://github.com/raine-works/sendspin-cpp.git"
@@ -67,6 +71,46 @@ def _request_high_performance_networking(config: ConfigType) -> ConfigType:
     return config
 
 
+def validate_signal_threshold(value):
+    """Validates audio signal threshold in dBFS (e.g. -42dB), percentage (e.g. 1%), or raw amplitude."""
+    if isinstance(value, (int, float)):
+        if value < 0:
+            amplitude = int(32767.0 * (10.0 ** (value / 20.0)))
+            return max(1, min(32767, amplitude))
+        elif value <= 1.0 and isinstance(value, float):
+            return max(1, min(32767, int(32767.0 * value)))
+        else:
+            return max(1, min(32767, int(value)))
+    s = str(value).strip()
+    if s.endswith("%"):
+        try:
+            pct = float(s[:-1].strip()) / 100.0
+            return max(1, min(32767, int(32767.0 * pct)))
+        except ValueError:
+            pass
+    if s.lower().endswith("dbfs"):
+        try:
+            db = float(s[:-4].strip())
+            return max(1, min(32767, int(32767.0 * (10.0 ** (db / 20.0)))))
+        except ValueError:
+            pass
+    if s.lower().endswith("db"):
+        try:
+            db = float(s[:-2].strip())
+            return max(1, min(32767, int(32767.0 * (10.0 ** (db / 20.0)))))
+        except ValueError:
+            pass
+    try:
+        val = float(s)
+        if val < 0:
+            return max(1, min(32767, int(32767.0 * (10.0 ** (val / 20.0)))))
+        return max(1, min(32767, int(val)))
+    except ValueError:
+        raise cv.Invalid(
+            f"Invalid signal threshold: {value}. Use e.g. -42dB, -40dBFS, 1%, or 300"
+        )
+
+
 SOURCE_SCHEMA = cv.Schema(
     {
         cv.GenerateID(): cv.declare_id(SendspinSource),
@@ -81,6 +125,14 @@ SOURCE_SCHEMA = cv.Schema(
         cv.Optional(CONF_CAPTURE_BUFFER): cv.positive_time_period_milliseconds,
         cv.Optional(CONF_OPUS_BITRATE): cv.positive_int,
         cv.Optional(CONF_OPUS_COMPLEXITY): cv.uint8_t,
+        cv.Optional(CONF_LINE_SENSE, default=False): cv.boolean,
+        cv.Optional(CONF_SIGNAL_THRESHOLD, default="-42dB"): validate_signal_threshold,
+        cv.Optional(
+            CONF_SILENCE_TIMEOUT, default="20s"
+        ): cv.positive_time_period_milliseconds,
+        cv.Optional(
+            CONF_DEBOUNCE_DURATION, default="200ms"
+        ): cv.positive_time_period_milliseconds,
         cv.Optional(CONF_TASK_STACK_IN_PSRAM): psram.validate_task_stack_in_psram,
     }
 )
@@ -180,6 +232,15 @@ async def to_code(config: ConfigType) -> None:
         if source_config.get(CONF_TASK_STACK_IN_PSRAM):
             psram.request_external_task_stack()
             source_fields.append(("psram_stack", True))
+        if (line_sense := source_config.get(CONF_LINE_SENSE)) is not None:
+            source_fields.append(("line_sense", line_sense))
+            cg.add(source.set_line_sense(line_sense))
+        if (signal_threshold := source_config.get(CONF_SIGNAL_THRESHOLD)) is not None:
+            cg.add(source.set_signal_threshold(signal_threshold))
+        if (silence_timeout := source_config.get(CONF_SILENCE_TIMEOUT)) is not None:
+            cg.add(source.set_silence_timeout_ms(silence_timeout.total_milliseconds))
+        if (debounce_duration := source_config.get(CONF_DEBOUNCE_DURATION)) is not None:
+            cg.add(source.set_debounce_duration_ms(debounce_duration.total_milliseconds))
         cg.add(
             source.set_role_config(
                 cg.StructInitializer(SourceRoleConfig, *source_fields)

@@ -36,6 +36,7 @@ This repository provides complete, production-ready ESPHome firmware for the Ai-
 - **⏱️ Adaptive Microsecond Slew Correction:** Software sample clock predictor continuously tracks ADC crystal drift against `esp_timer_get_time()`, filtering interrupt jitter and maintaining drift-free synchronization.
 - **💾 Durable Cryptographic Identity:** Persistent Curve25519 identity keypair and server trust records stored in ESP32 Non-Volatile Storage (NVS). Your `client_id` remains stable across reboots.
 - **🔑 Clean Out-of-Band Pairing:** Automatically logs and surfaces the 107-character `SP:0...` pairing token once on boot and exposes it as a deduplicated Home Assistant sensor entity (zero recurring log spam).
+- **🎵 Needle-Drop & Signal Autostart (`line_sense`):** Continuous idle listening on the ES8388 ADC detects the needle drop and groove noise in real time. Features lock-free peak amplitude tracking that natively triggers Music Assistant's **Autostart** (to begin streaming to target speakers when the stylus touches down) and **Autostop** (after configurable silence when the record ends).
 - **📊 Real-Time Streaming Telemetry:** Active streaming metrics logged periodically in the background (elapsed duration, total KB sent, and write drop count).
 - **🎛️ Dual Input Multiplexing:** Easily toggle between the 3.5 mm Aux Line-In jack (`LINE2`, default) and the onboard stereo electret microphones (`LINE1`) via Home Assistant or ESPHome dashboard.
 
@@ -159,6 +160,7 @@ sendspin:
   id: sendspin_hub
   task_stack_in_psram: true   # Moves HTTP/WebSocket task stack into 8 MB PSRAM
   source:
+    id: sendspin_source
     task_stack_in_psram: true # Moves audio capture task stack into PSRAM
     microphone:
       microphone: a1s_adc
@@ -170,6 +172,36 @@ sendspin:
     opus_complexity: 0        # Fixed-point complexity: 0 (fastest, optimized for ESP32 LX6 CPU budget)
     chunk_duration: 40ms      # 40ms frames = 25 packets/s (eliminates queue congestion)
     capture_buffer: 2000ms    # 2-second PSRAM ring buffer to absorb Wi-Fi latency jitter
+
+    # Automatic needle-drop & audio signal sensing:
+    line_sense: true          # Enables continuous idle listening & Sendspin line_sense
+    signal_threshold: -42dB   # Threshold in dBFS (-42dB), %, or amplitude (300)
+    silence_timeout: 20s      # Silence duration before reporting ABSENT (stops stream)
+    debounce_duration: 200ms  # Sustained signal required before reporting PRESENT
+
+binary_sensor:
+  - platform: template
+    name: "Audio Signal"
+    id: sendspin_audio_signal
+    icon: "mdi:waveform"
+    device_class: sound
+    lambda: |-
+      return id(sendspin_source)->is_signal_present();
+    update_interval: 1s
+
+sensor:
+  - platform: template
+    name: "Audio Peak Level"
+    id: sendspin_audio_peak
+    icon: "mdi:volume-high"
+    unit_of_measurement: "dBFS"
+    accuracy_decimals: 1
+    entity_category: diagnostic
+    lambda: |-
+      int16_t peak = id(sendspin_source)->get_last_peak();
+      if (peak <= 0) return -96.0f;
+      return 20.0f * log10f(static_cast<float>(peak) / 32767.0f);
+    update_interval: 1s
 
 text_sensor:
   - platform: template
@@ -185,6 +217,13 @@ text_sensor:
       return {};
     update_interval: 10s
 ```
+
+### ⚙️ Enabling Music Assistant Autostart / Autostop
+When `line_sense: true` is enabled, the source role advertises signal sensing to Music Assistant:
+1. In **Music Assistant**, go to **Settings** → **Providers** → **Sendspin Source**.
+2. Locate **A1S Sendspin Source** in your sources list.
+3. Under **Autostart Target Player**, select the speaker or player group you want to automatically play to.
+4. When the turntable needle drops, the ESP32 detects the signal transition (`ABSENT` $\rightarrow$ `PRESENT`), and Music Assistant immediately starts playback on your selected speakers. When the record ends and silence exceeds `silence_timeout` (default 20s), Music Assistant automatically stops the stream.
 
 ---
 

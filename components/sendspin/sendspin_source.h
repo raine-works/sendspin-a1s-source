@@ -36,6 +36,18 @@ class SendspinSource final : public SendspinChild, public sendspin::SourceRoleLi
   /// Called by the hub in its setup(), before it starts the client; the microphone has set its format by then.
   sendspin::SourceRoleConfig build_role_config() const;
 
+  void set_line_sense(bool line_sense) { this->line_sense_ = line_sense; }
+  void set_signal_threshold(int16_t threshold) { this->signal_threshold_ = threshold; }
+  void set_silence_timeout_ms(uint32_t ms) { this->silence_timeout_ms_ = ms; }
+  void set_debounce_duration_ms(uint32_t ms) { this->debounce_duration_ms_ = ms; }
+
+  bool is_signal_present() const { return this->current_signal_ == sendspin::SourceSignal::PRESENT; }
+  int16_t get_last_peak() const { return this->last_peak_; }
+
+  template<typename F> void add_signal_callback(F &&callback) {
+    this->signal_callbacks_.add(std::forward<F>(callback));
+  }
+
  protected:
   // --- SourceRoleListener overrides ---
   void on_streaming_started() override;
@@ -54,6 +66,24 @@ class SendspinSource final : public SendspinChild, public sendspin::SourceRoleLi
   std::atomic<uint32_t> dropped_writes_{0};
   uint32_t stream_start_ms_{0};
   uint32_t last_stats_log_ms_{0};
+
+  // Line-in signal sensing (Sendspin line_sense)
+  bool line_sense_{false};
+  int16_t signal_threshold_{260};       // -42 dBFS default
+  uint32_t debounce_duration_ms_{200};  // 200 ms sustained signal to transition to PRESENT
+  uint32_t silence_timeout_ms_{20000};  // 20 s sustained silence to transition to ABSENT
+
+  // Atomic peak value updated lock-free from the microphone FreeRTOS task
+  std::atomic<int16_t> current_peak_{0};
+
+  // Main-loop evaluation state
+  int16_t last_peak_{0};
+  uint32_t last_signal_check_ms_{0};
+  uint32_t signal_above_start_ms_{0};
+  uint32_t signal_below_start_ms_{0};
+  sendspin::SourceSignal current_signal_{sendspin::SourceSignal::ABSENT};
+  bool signal_state_reported_{false};
+  CallbackManager<void(bool)> signal_callbacks_{};
 };
 
 }  // namespace esphome::sendspin_
