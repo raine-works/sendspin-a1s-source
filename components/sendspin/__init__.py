@@ -20,7 +20,6 @@ CONF_CHUNK_DURATION = "chunk_duration"
 CONF_CODEC = "codec"
 CONF_OPUS_BITRATE = "opus_bitrate"
 CONF_OPUS_COMPLEXITY = "opus_complexity"
-CONF_TASK_STACK_SIZE = "task_stack_size"
 
 # sendspin-cpp build with Noise_KKpsk2 transport encryption and source-role support
 SENDSPIN_CPP_REPO = "https://github.com/raine-works/sendspin-cpp.git"
@@ -82,7 +81,6 @@ SOURCE_SCHEMA = cv.Schema(
         cv.Optional(CONF_CAPTURE_BUFFER): cv.positive_time_period_milliseconds,
         cv.Optional(CONF_OPUS_BITRATE): cv.positive_int,
         cv.Optional(CONF_OPUS_COMPLEXITY): cv.uint8_t,
-        cv.Optional(CONF_TASK_STACK_SIZE): cv.positive_int,
         cv.Optional(CONF_TASK_STACK_IN_PSRAM): psram.validate_task_stack_in_psram,
     }
 )
@@ -174,8 +172,6 @@ async def to_code(config: ConfigType) -> None:
             source_fields.append(("codec", codec))
         if (opus_complexity := source_config.get(CONF_OPUS_COMPLEXITY)) is not None:
             source_fields.append(("opus_complexity", opus_complexity))
-        if (task_stack_size := source_config.get(CONF_TASK_STACK_SIZE)) is not None:
-            source_fields.append(("task_stack_size", task_stack_size))
         if source_config.get(CONF_TASK_STACK_IN_PSRAM):
             psram.request_external_task_stack()
             source_fields.append(("psram_stack", True))
