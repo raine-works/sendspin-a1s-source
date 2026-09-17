@@ -140,6 +140,8 @@ async def to_code(config: ConfigType) -> None:
         esp32.add_idf_sdkconfig_option("CONFIG_SENDSPIN_ENABLE_SOURCE", True)
         # Block rather than drop when the httpd control queue fills during Wi-Fi jitter
         esp32.add_idf_sdkconfig_option("CONFIG_HTTPD_QUEUE_WORK_BLOCKING", True)
+        # Increase the UDP control mailbox size (default 6) to 32 for higher queue capacity
+        esp32.add_idf_sdkconfig_option("CONFIG_LWIP_UDP_RECVMBOX_SIZE", 32)
 
         mic_source = await microphone.microphone_source_to_code(
             source_config[CONF_MICROPHONE]

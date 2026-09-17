@@ -37,6 +37,9 @@ esp32:
   board: esp-wrover-kit
   framework:
     type: esp-idf
+    advanced:
+      minimum_chip_revision: "3.1"
+      sram1_as_iram: true
 
 psram:
 
@@ -50,6 +53,8 @@ ota:
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
+  power_save_mode: none
+  fast_connect: true
   ap:
 
 captive_portal:
@@ -103,8 +108,8 @@ sendspin:
       channels: [0, 1]
     # 40ms chunks cut packet rate in half (25/sec instead of 50/sec), preventing queue congestion
     chunk_duration: 40ms
-    # 500ms ring buffer in PSRAM protects against transient Wi-Fi jitter
-    capture_buffer: 500ms
+    # 1000ms (1 second) ring buffer in PSRAM protects against transient Wi-Fi jitter
+    capture_buffer: 1000ms
     # codec: opus            # Optional: 128kbps Opus for bandwidth-constrained Wi-Fi
     # opus_bitrate: 128000
     # opus_complexity: 2
