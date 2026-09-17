@@ -26,7 +26,9 @@ esphome:
           // ADCCONTROL4: 16-bit I2S framing. The driver writes 0x0D (left-justified) but i2s_audio reads Philips
           // I2S, which is one bit late: every sample loses its sign bit and L/R swap. ESP-ADF writes 0x0C here.
           id(es8388_dac)->write_byte(0x0C, 0x0C);
-          // ADCCONTROL10: ALC off (the driver's voice ALC pumps music); PGA gain stays at ADCCONTROL1's 0 dB
+          // ADCCONTROL1: +12 dB ADC PGA gain for clean line-in capture (0x44 = +12 dB L/R)
+          id(es8388_dac)->write_byte(0x09, 0x44);
+          // ADCCONTROL10: ALC off (the driver's voice ALC pumps music)
           id(es8388_dac)->write_byte(0x12, 0x22);
           // ADCCONTROL14: noise gate off (the driver's gate mutes the ADC below -40.5 dBFS)
           id(es8388_dac)->write_byte(0x16, 0x00);
