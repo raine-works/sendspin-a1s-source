@@ -229,12 +229,12 @@ async def to_code(config: ConfigType) -> None:
             source_fields.append(("codec", codec))
         if (opus_complexity := source_config.get(CONF_OPUS_COMPLEXITY)) is not None:
             source_fields.append(("opus_complexity", opus_complexity))
-        if source_config.get(CONF_TASK_STACK_IN_PSRAM):
-            psram.request_external_task_stack()
-            source_fields.append(("psram_stack", True))
         if (line_sense := source_config.get(CONF_LINE_SENSE)) is not None:
             source_fields.append(("line_sense", line_sense))
             cg.add(source.set_line_sense(line_sense))
+        if source_config.get(CONF_TASK_STACK_IN_PSRAM):
+            psram.request_external_task_stack()
+            source_fields.append(("psram_stack", True))
         if (signal_threshold := source_config.get(CONF_SIGNAL_THRESHOLD)) is not None:
             cg.add(source.set_signal_threshold(signal_threshold))
         if (silence_timeout := source_config.get(CONF_SILENCE_TIMEOUT)) is not None:
