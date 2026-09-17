@@ -142,6 +142,12 @@ async def to_code(config: ConfigType) -> None:
         esp32.add_idf_sdkconfig_option("CONFIG_HTTPD_QUEUE_WORK_BLOCKING", True)
         # Increase the UDP control mailbox size (default 6) to 32 for higher queue capacity
         esp32.add_idf_sdkconfig_option("CONFIG_LWIP_UDP_RECVMBOX_SIZE", 32)
+        # Route micro-opus pseudostack and codec state to PSRAM to prevent internal RAM exhaustion
+        esp32.add_idf_sdkconfig_option("CONFIG_OPUS_NONTHREADSAFE_PSEUDOSTACK", True)
+        esp32.add_idf_sdkconfig_option("CONFIG_OPUS_THREADSAFE_PSEUDOSTACK", False)
+        esp32.add_idf_sdkconfig_option("CONFIG_OPUS_USE_ALLOCA", False)
+        esp32.add_idf_sdkconfig_option("CONFIG_OPUS_PSEUDOSTACK_PREFER_PSRAM", True)
+        esp32.add_idf_sdkconfig_option("CONFIG_OPUS_STATE_PREFER_PSRAM", True)
 
         mic_source = await microphone.microphone_source_to_code(
             source_config[CONF_MICROPHONE]
