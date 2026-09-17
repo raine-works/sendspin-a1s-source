@@ -23,7 +23,7 @@ CONF_OPUS_COMPLEXITY = "opus_complexity"
 
 # sendspin-cpp build with Noise_KKpsk2 transport encryption and source-role support
 SENDSPIN_CPP_REPO = "https://github.com/raine-works/sendspin-cpp.git"
-SENDSPIN_CPP_REF = "86b1036a5a8ab587d37aad4b9da97f7e55cee2f4"
+SENDSPIN_CPP_REF = "9fbdbc42750d47d228f24bf050f04444f7cbef3e"
 
 # sendspin-cpp library lives in the global `sendspin` namespace.
 sendspin_library_ns = cg.global_ns.namespace("sendspin")

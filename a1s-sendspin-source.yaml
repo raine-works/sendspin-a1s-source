@@ -111,8 +111,8 @@ sendspin:
       channels: [0, 1]
     # 40ms chunks cut packet rate in half (25/sec instead of 50/sec), preventing queue congestion
     chunk_duration: 40ms
-    # 1000ms (1 second) ring buffer in PSRAM protects against transient Wi-Fi jitter
-    capture_buffer: 1000ms
+    # 2000ms (2 seconds) ring buffer in PSRAM protects against transient Wi-Fi jitter
+    capture_buffer: 2000ms
     codec: opus
     opus_bitrate: 128000
     opus_complexity: 0
