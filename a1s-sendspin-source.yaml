@@ -40,8 +40,10 @@ esp32:
     advanced:
       minimum_chip_revision: "3.1"
       sram1_as_iram: true
+  cpu_frequency: 240MHz
 
 psram:
+  speed: 80MHz
 
 logger:
 
