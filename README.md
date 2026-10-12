@@ -33,7 +33,7 @@ This repository provides complete, production-ready ESPHome firmware for the Ai-
   - Voice noise gate disabled (`0x16` $\rightarrow$ `0x00`) to preserve delicate musical decays and quiet passages.
 - **🚀 Ultra-Low Latency DMA Engine with Opus & PCM Support:** Supports both broadcast-grade Opus compression (128 kbps, 16 KB/s) and uncompressed 48 kHz / 16-bit stereo PCM streaming (1.536 Mbps). Utilizing ESP32 I²S DMA buffers and a 2,000 ms external PSRAM lock-free SPSC ring buffer to absorb Wi-Fi jitter.
 - **⚡ 12× Bandwidth Reduction via Opus:** Highly optimized fixed-point `micro-opus` encoding with working memory in fast internal SRAM reduces Wi-Fi bandwidth by ~92%, packing 40ms chunks into compact single-packet payloads (< 640 B) to eliminate packet fragmentation and dropouts on 2.4 GHz Wi-Fi.
-- **⏱️ Adaptive Microsecond Slew Correction:** Software sample clock predictor continuously tracks ADC crystal drift against `esp_timer_get_time()`, filtering interrupt jitter and maintaining drift-free synchronization.
+- **⏱️ Sample-Clock Timestamping:** Capture times are derived from a running sample count against a single `esp_timer_get_time()` anchor, so I²S/task-scheduling jitter never reaches the wire (which listeners would hear as speed wobble). Residual drift is corrected with a dead-banded slew capped at 100 ppm, and the timeline only re-anchors after sustained disagreement (i.e. real sample loss).
 - **💾 Durable Cryptographic Identity:** Persistent Curve25519 identity keypair and server trust records stored in ESP32 Non-Volatile Storage (NVS). Your `client_id` remains stable across reboots.
 - **🔑 Clean Out-of-Band Pairing:** Automatically logs and surfaces the 107-character `SP:0...` pairing token once on boot and exposes it as a deduplicated Home Assistant sensor entity (zero recurring log spam).
 - **🎵 Needle-Drop & Signal Autostart (`line_sense`):** Continuous idle listening on the ES8388 ADC detects the needle drop and groove noise in real time. Features lock-free peak amplitude tracking that natively triggers Music Assistant's **Autostart** (to begin streaming to target speakers when the stylus touches down) and **Autostop** (after configurable silence when the record ends).
@@ -124,8 +124,8 @@ esphome run a1s-sendspin-source.yaml
       ```text
       [sendspin.source]: Server started stream (codec: Opus, 24000 Hz, 2 ch, 16 bit); internal free: 141224 B, max block: 110592 B; starting microphone
       [sendspin.source_encoder]: Opus encode: 14850 us (3840 bytes in -> 639 bytes out)
-      [sendspin.source]: Streaming: 5s active | 80 KB sent | 0 drops
-      [sendspin.source]: Streaming: 10s active | 160 KB sent | 0 drops
+      [sendspin.source]: Streaming: 5s active | 80 KB sent | 0 drops | 0 re-anchors
+      [sendspin.source]: Streaming: 10s active | 160 KB sent | 0 drops | 0 re-anchors
       [sendspin.source]: Server stopped stream; duration: 45s, sent: 720 KB, drops: 0; stopping microphone
       ```
 
