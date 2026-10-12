@@ -58,12 +58,21 @@ class SendspinSource final : public SendspinChild, public sendspin::SourceRoleLi
   sendspin::SourceRole *source_role_{nullptr};
   audio::AudioStreamInfo stream_info_;
 
-  // Microphone task only: predicted capture time of the next block's first sample
-  int64_t next_capture_time_us_{0};
+  // Microphone task only: sample-clock timeline. A block's capture time is anchor + frames counted since the anchor
+  // + a slow, rate-limited slew; it never follows per-block arrival jitter.
+  bool anchored_{false};
+  int64_t anchor_us_{0};
+  uint64_t frames_since_anchor_{0};
+  int64_t slew_us_{0};
+  int64_t filtered_error_us_{0};
+  int64_t out_of_band_us_{0};
+  // Set by the main loop when a stream starts; the microphone task re-anchors on its next block
+  std::atomic<bool> reanchor_requested_{true};
 
   // Streaming statistics
   std::atomic<uint64_t> total_bytes_streamed_{0};
   std::atomic<uint32_t> dropped_writes_{0};
+  std::atomic<uint32_t> reanchors_{0};
   uint32_t stream_start_ms_{0};
   uint32_t last_stats_log_ms_{0};
 

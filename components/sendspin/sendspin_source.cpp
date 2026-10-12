@@ -18,12 +18,22 @@ namespace esphome::sendspin_ {
 
 static const char *const TAG = "sendspin.source";
 
-// Capture times run on a sample clock: each block starts where the previous one ended, and only a fraction of its
-// disagreement with the block's arrival time is folded back in. Arrival times jitter with I2S DMA and task scheduling
-// but are unbiased, so the slew tracks the ADC's real rate against esp_timer without putting the jitter on the wire.
-static const int64_t CAPTURE_TIME_SLEW_DIVISOR = 32;
-// A disagreement this large is a discontinuity (the microphone restarted or dropped audio), not jitter: re-anchor.
-static const int64_t CAPTURE_TIME_REANCHOR_US = 20000;
+// Capture times run on a sample clock: anchor + frames since the anchor, computed fresh each block so integer rounding
+// never accumulates. The ESP32 is I2S master, so the ADC's sample clock and esp_timer share one crystal and have no
+// real drift; block arrival times only add scheduling jitter. Every timestamp wobble reaches the wire, and players that
+// sync by resampling turn it into audible speed changes, so the timeline only ever slews slowly and within a rate cap.
+//
+// Arrival errors are clamped before filtering so a stalled read (late, then a burst of buffered blocks) can't move it.
+static const int64_t CAPTURE_ERROR_CLAMP_US = 5000;
+static const int64_t CAPTURE_ERROR_FILTER_DIVISOR = 64;
+// Filtered error inside this band is jitter, not drift: the timeline runs at exactly the nominal rate
+static const int64_t CAPTURE_SLEW_DEADBAND_US = 500;
+// Slew cap: 100 ppm (0.17 cents) is far below audible pitch change but still outruns any crystal divider error
+static const int64_t CAPTURE_SLEW_MAX_PPM = 100;
+// Arrival this far off the timeline for this much audio is a discontinuity (DMA overrun lost samples), not a stall
+// the DMA buffer absorbed: re-anchor
+static const int64_t CAPTURE_REANCHOR_US = 30000;
+static const int64_t CAPTURE_REANCHOR_HOLD_US = 200000;
 
 void SendspinSource::setup() {
   this->source_role_ = this->parent_->get_source_role();
@@ -69,17 +79,52 @@ void SendspinSource::setup() {
     }
 
     if (this->source_role_->is_streaming()) {
-      const int64_t block_us = static_cast<int64_t>(this->stream_info_.bytes_to_frames(data.size())) * 1000000 /
-                               this->stream_info_.get_sample_rate();
+      const uint32_t sample_rate = this->stream_info_.get_sample_rate();
+      const uint32_t block_frames = this->stream_info_.bytes_to_frames(data.size());
+      const int64_t block_us = static_cast<int64_t>(block_frames) * 1000000 / sample_rate;
       // The block was just read, so its first sample was captured about one block ago
       const int64_t arrival_us = esp_timer_get_time() - block_us;
-      const int64_t error_us = arrival_us - this->next_capture_time_us_;
 
-      int64_t capture_time_us = arrival_us;
-      if (std::llabs(error_us) < CAPTURE_TIME_REANCHOR_US) {
-        capture_time_us = this->next_capture_time_us_ + error_us / CAPTURE_TIME_SLEW_DIVISOR;
+      if (this->reanchor_requested_.exchange(false, std::memory_order_relaxed)) {
+        this->anchored_ = false;
       }
-      this->next_capture_time_us_ = capture_time_us + block_us;
+
+      int64_t error_us = 0;
+      if (this->anchored_) {
+        const int64_t timeline_us =
+            this->anchor_us_ + static_cast<int64_t>(this->frames_since_anchor_ * 1000000 / sample_rate) + this->slew_us_;
+        error_us = arrival_us - timeline_us;
+        if (std::llabs(error_us) >= CAPTURE_REANCHOR_US) {
+          this->out_of_band_us_ += block_us;
+          if (this->out_of_band_us_ >= CAPTURE_REANCHOR_HOLD_US) {
+            this->anchored_ = false;
+            this->reanchors_.fetch_add(1, std::memory_order_relaxed);
+          }
+        } else {
+          this->out_of_band_us_ = 0;
+        }
+      }
+
+      if (!this->anchored_) {
+        this->anchored_ = true;
+        this->anchor_us_ = arrival_us;
+        this->frames_since_anchor_ = 0;
+        this->slew_us_ = 0;
+        this->filtered_error_us_ = 0;
+        this->out_of_band_us_ = 0;
+      } else {
+        const int64_t clamped_us = std::clamp(error_us, -CAPTURE_ERROR_CLAMP_US, CAPTURE_ERROR_CLAMP_US);
+        this->filtered_error_us_ += (clamped_us - this->filtered_error_us_) / CAPTURE_ERROR_FILTER_DIVISOR;
+        if (std::llabs(this->filtered_error_us_) > CAPTURE_SLEW_DEADBAND_US) {
+          const int64_t max_step_us = std::max<int64_t>(1, block_us * CAPTURE_SLEW_MAX_PPM / 1000000);
+          this->slew_us_ += std::clamp(this->filtered_error_us_, -max_step_us, max_step_us);
+        }
+      }
+
+      const int64_t capture_time_us = this->anchor_us_ +
+                                      static_cast<int64_t>(this->frames_since_anchor_ * 1000000 / sample_rate) +
+                                      this->slew_us_;
+      this->frames_since_anchor_ += block_frames;
 
       if (this->source_role_->write_audio(data.data(), data.size(), capture_time_us)) {
         this->total_bytes_streamed_.fetch_add(data.size(), std::memory_order_relaxed);
@@ -106,8 +151,9 @@ void SendspinSource::loop() {
       const uint32_t duration_s = (now - this->stream_start_ms_) / 1000;
       const uint32_t kb_sent = static_cast<uint32_t>(this->total_bytes_streamed_.load(std::memory_order_relaxed) / 1024);
       const uint32_t drops = this->dropped_writes_.load(std::memory_order_relaxed);
-      ESP_LOGI(TAG, "Streaming: %" PRIu32 "s active | %" PRIu32 " KB sent | %" PRIu32 " drops",
-               duration_s, kb_sent, drops);
+      const uint32_t reanchors = this->reanchors_.load(std::memory_order_relaxed);
+      ESP_LOGI(TAG, "Streaming: %" PRIu32 "s active | %" PRIu32 " KB sent | %" PRIu32 " drops | %" PRIu32 " re-anchors",
+               duration_s, kb_sent, drops, reanchors);
     }
   }
 
@@ -208,9 +254,10 @@ void SendspinSource::on_streaming_started() {
            static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
            static_cast<unsigned>(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
            this->line_sense_ ? "keeping active" : "starting");
-  this->next_capture_time_us_ = 0;
+  this->reanchor_requested_.store(true, std::memory_order_relaxed);
   this->total_bytes_streamed_.store(0, std::memory_order_relaxed);
   this->dropped_writes_.store(0, std::memory_order_relaxed);
+  this->reanchors_.store(0, std::memory_order_relaxed);
   this->stream_start_ms_ = millis();
   this->last_stats_log_ms_ = millis();
   if (!this->line_sense_) {
