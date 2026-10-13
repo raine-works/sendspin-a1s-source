@@ -1,5 +1,5 @@
 # Tags and releases master automatically from Conventional Commits since the last vX.Y.Z tag:
-#   feat!: / fix!: / "BREAKING CHANGE" -> major    feat: -> minor    fix: / perf: -> patch
+#   feat!: / fix!: / a "BREAKING CHANGE:" footer line -> major    feat: -> minor    fix: / perf: -> patch
 # Anything else (docs:, chore:, refactor:, ci:, ...) does not cut a release.
 name: Release
 
@@ -47,7 +47,7 @@ jobs:
             subjects=$(git log --no-merges --format=%s "$range")
             bodies=$(git log --no-merges --format=%b "$range")
             bump=none
-            if echo "$subjects" | grep -qE '^[a-z]+(\([^)]*\))?!:' || echo "$bodies" | grep -q 'BREAKING CHANGE'; then
+            if echo "$subjects" | grep -qE '^[a-z]+(\([^)]*\))?!:' || echo "$bodies" | grep -qE '^BREAKING[ -]CHANGE:'; then
               bump=major
             elif echo "$subjects" | grep -qE '^feat(\([^)]*\))?:'; then
               bump=minor

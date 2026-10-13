@@ -104,7 +104,7 @@ Commit messages **must** follow [Conventional Commits](https://www.conventionalc
 | `perf` | Faster / less memory / fewer drops, same behavior | patch |
 | `refactor`, `docs`, `chore`, `ci`, `test`, `style` | No change to firmware behavior | none |
 
-**Breaking changes → major:** add `!` before the colon (`feat(config)!: rename capture_buffer to ring_buffer`) **and** a `BREAKING CHANGE: <what users must do>` footer in the body. A change is breaking when existing users must edit their YAML, re-pair with the server, or lose a previously supported setup after updating.
+**Breaking changes → major:** add `!` before the colon (`feat(config)!: rename capture_buffer to ring_buffer`) **and** a `BREAKING CHANGE: <what users must do>` footer in the body. A change is breaking when existing users must edit their YAML, re-pair with the server, or lose a previously supported setup after updating. The workflow matches only a body line that *starts* with `BREAKING CHANGE:` (or `BREAKING-CHANGE:`), so mentioning the phrase mid-sentence is safe, but never start a line with it in a non-breaking commit.
 
 - Pick the type by effect on someone flashing the firmware, not by the size of the diff. A one-line register change that fixes audio is `fix`; a large internal restructure with identical behavior is `refactor`.
 - One logical change per commit, so each type stays accurate. Don't bundle a `feat` into a `fix` commit.
