@@ -90,3 +90,22 @@ When modifying files in `components/sendspin/`:
       components: [sendspin]
   ```
 - Before publishing or committing changes, ensure that `README.md` stays synchronized with any configuration or code changes.
+
+## 🏷️ Versioning
+
+Commit messages **must** follow [Conventional Commits](https://www.conventionalcommits.org/). They are not just style: `.github/workflows/release.yml` reads them on every push to `master` to decide the next `vX.Y.Z` tag and GitHub release. A wrong type ships a wrong version.
+
+**Format:** `<type>(<optional scope>): <imperative summary>`, e.g. `fix(source): re-anchor only on sustained sample loss`. Scopes in use: `source`, `hub`, `codegen`, `config`, `deps`, `opus`, `audio`, `stream`, `api`.
+
+| Type | Use for | Release |
+|---|---|---|
+| `feat` | New user-visible capability or config option | minor |
+| `fix` | Bug fix (wrong audio, crash, bad codegen, broken config) | patch |
+| `perf` | Faster / less memory / fewer drops, same behavior | patch |
+| `refactor`, `docs`, `chore`, `ci`, `test`, `style` | No change to firmware behavior | none |
+
+**Breaking changes → major:** add `!` before the colon (`feat(config)!: rename capture_buffer to ring_buffer`) **and** a `BREAKING CHANGE: <what users must do>` footer in the body. A change is breaking when existing users must edit their YAML, re-pair with the server, or lose a previously supported setup after updating.
+
+- Pick the type by effect on someone flashing the firmware, not by the size of the diff. A one-line register change that fixes audio is `fix`; a large internal restructure with identical behavior is `refactor`.
+- One logical change per commit, so each type stays accurate. Don't bundle a `feat` into a `fix` commit.
+- Never create version tags or releases by hand; the workflow owns them.

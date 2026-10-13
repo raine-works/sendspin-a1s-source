@@ -1,0 +1,94 @@
+# Tags and releases master automatically from Conventional Commits since the last vX.Y.Z tag:
+#   feat!: / fix!: / "BREAKING CHANGE" -> major    feat: -> minor    fix: / perf: -> patch
+# Anything else (docs:, chore:, refactor:, ci:, ...) does not cut a release.
+name: Release
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Force a bump instead of deriving it from commits
+        type: choice
+        options: [auto, patch, minor, major]
+        default: auto
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine next version
+        id: version
+        env:
+          BUMP_INPUT: ${{ inputs.bump || 'auto' }}
+        run: |
+          last_tag=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1)
+          if [ -z "$last_tag" ]; then
+            last_tag=v0.0.0
+            range=HEAD
+          else
+            range="$last_tag..HEAD"
+          fi
+
+          bump="$BUMP_INPUT"
+          if [ "$bump" = auto ]; then
+            subjects=$(git log --no-merges --format=%s "$range")
+            bodies=$(git log --no-merges --format=%b "$range")
+            bump=none
+            if echo "$subjects" | grep -qE '^[a-z]+(\([^)]*\))?!:' || echo "$bodies" | grep -q 'BREAKING CHANGE'; then
+              bump=major
+            elif echo "$subjects" | grep -qE '^feat(\([^)]*\))?:'; then
+              bump=minor
+            elif echo "$subjects" | grep -qE '^(fix|perf)(\([^)]*\))?:'; then
+              bump=patch
+            fi
+          fi
+
+          if [ "$bump" = none ]; then
+            echo "No releasable commits since $last_tag; skipping."
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          IFS=. read -r major minor patch <<< "${last_tag#v}"
+          case "$bump" in
+            major) major=$((major + 1)); minor=0; patch=0 ;;
+            minor) minor=$((minor + 1)); patch=0 ;;
+            patch) patch=$((patch + 1)) ;;
+          esac
+          next="v$major.$minor.$patch"
+
+          echo "$last_tag -> $next ($bump)"
+          echo "release=true" >> "$GITHUB_OUTPUT"
+          echo "tag=$next" >> "$GITHUB_OUTPUT"
+          echo "previous=$last_tag" >> "$GITHUB_OUTPUT"
+
+      - name: Tag and publish release
+        if: steps.version.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          PREVIOUS: ${{ steps.version.outputs.previous }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898333+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "$TAG"
+          git push origin "$TAG"
+
+          notes_args=(--generate-notes)
+          if [ "$PREVIOUS" != v0.0.0 ]; then
+            notes_args+=(--notes-start-tag "$PREVIOUS")
+          fi
+          gh release create "$TAG" --title "$TAG" --verify-tag "${notes_args[@]}"

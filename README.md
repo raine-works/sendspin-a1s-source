@@ -246,6 +246,21 @@ Do **not** enable native API encryption (`api: encryption: key: ...`) or OTA enc
 
 ---
 
+## 🏷️ Releases & Versioning
+
+Every push to `master` runs the [Release workflow](.github/workflows/release.yml), which reads the [Conventional Commits](https://www.conventionalcommits.org/) since the last `vX.Y.Z` tag and publishes a tagged GitHub release:
+
+| Commits since last tag | Bump |
+|---|---|
+| `feat!:` / `fix!:` / `BREAKING CHANGE` in body | major |
+| `feat:` | minor |
+| `fix:` / `perf:` | patch |
+| only `docs:`, `chore:`, `refactor:`, `ci:`, … | no release |
+
+A bump can also be forced from **Actions → Release → Run workflow**. To pin a build to a release instead of tracking `master`, use `github://raine-works/sendspin-a1s-source@vX.Y.Z` in `external_components`.
+
+---
+
 ## ☕ Support
 
 If you find this project helpful, consider buying me a coffee to support continued maintenance and development:
