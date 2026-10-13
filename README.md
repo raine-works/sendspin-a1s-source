@@ -122,10 +122,9 @@ esphome run a1s-sendspin-source.yaml
      ```
    * Once playback or capture is initiated from Music Assistant, streaming starts and logs real-time telemetry every 5 seconds:
       ```text
-      [sendspin.source]: Server started stream (codec: Opus, 24000 Hz, 2 ch, 16 bit); internal free: 141224 B, max block: 110592 B; starting microphone
-      [sendspin.source_encoder]: Opus encode: 14850 us (3840 bytes in -> 639 bytes out)
-      [sendspin.source]: Streaming: 5s active | 80 KB sent | 0 drops | 0 re-anchors
-      [sendspin.source]: Streaming: 10s active | 160 KB sent | 0 drops | 0 re-anchors
+      [sendspin.source]: Server started stream (codec: PCM, 24000 Hz, 2 ch, 16 bit); internal free: 141224 B, max block: 110592 B; starting microphone
+      [sendspin.source]: Streaming: 5s active | 469 KB sent | 0 drops | 0 re-anchors
+      [sendspin.source]: Streaming: 10s active | 938 KB sent | 0 drops | 0 re-anchors
       [sendspin.source]: Server stopped stream; duration: 45s, sent: 720 KB, drops: 0; stopping microphone
       ```
 
@@ -167,9 +166,9 @@ sendspin:
       channels: [0, 1]        # 0: Left, 1: Right
     
     # Streaming parameters:
-    codec: opus               # 'opus' (recommended for Wi-Fi) or 'pcm' (uncompressed 1.536 Mbps)
-    opus_bitrate: 128000      # 128 kbps transparent stereo audio (CD quality)
-    opus_complexity: 0        # Fixed-point complexity: 0 (fastest, optimized for ESP32 LX6 CPU budget)
+    codec: pcm                # 'pcm' (default here, 768 kbps at 24 kHz stereo) or 'opus' (see Opus note below)
+    # opus_bitrate: 128000    # Opus only: 128 kbps transparent stereo audio
+    # opus_complexity: 0      # Opus only: fixed-point complexity 0 (fastest on ESP32 LX6)
     chunk_duration: 40ms      # 40ms frames = 25 packets/s (eliminates queue congestion)
     capture_buffer: 2000ms    # 2-second PSRAM ring buffer to absorb Wi-Fi latency jitter
 
@@ -234,6 +233,7 @@ Encoding real-time stereo audio in Opus on an original ESP32 (Xtensa LX6 @ 240 M
 - **Dedicated Core 1 Execution:** The source streaming task (`SsSrc`) is pinned to **Core 1** at priority 6. This isolates encoding from Core 0, which handles Wi-Fi PHY/MAC interrupts, the LwIP TCP/IP stack, flash writes, and the main ESPHome loop.
 - **Inter-Frame Prediction Disabled:** Setting `OPUS_SET_PREDICTION_DISABLED(1)` eliminates redundant inter-frame correlation calculations in CELT, saving ~1–2 ms per chunk while ensuring each network packet is independently decodable without frame dependencies.
 - **24 kHz Superwideband Stereo:** Sizing the capture rate to 24 kHz provides high-fidelity audio (up to 12 kHz frequency response) while taking only ~15 ms to encode a 40 ms chunk (~37% CPU load on Core 1), leaving ~25 ms of idle headroom per chunk to guarantee zero buffer overruns or drops even during complex musical passages. Uncompressed 48 kHz stereo is also supported via `codec: pcm`.
+- **⚠️ Opus currently disabled by default:** On hardware, encodes have been observed at 35–58 ms per 40 ms chunk (slower than real time), overflowing the capture ring at ~5 drops/s and causing audible stutter. The shipped config uses `codec: pcm` until this is resolved; watch the `drops` counter if you switch back to Opus.
 
 ### ES8388 Codec Framing
 ESPHome's upstream `es8388` driver initializes the ADC in Left-Justified mode (`0x0D`). However, ESPHome's `i2s_audio` component reads Philips I²S standard (1-bit clock delay). This mismatch results in inverted polarity, lost sign bits, and swapped stereo channels. This firmware forcibly overrides register `0x0C` (`ADCCONTROL4`) to `0x0C` on boot, establishing bit-perfect Philips I²S alignment.
