@@ -252,7 +252,7 @@ Every push to `master` runs the [Release workflow](.github/workflows/release.yml
 
 | Commits since last tag | Bump |
 |---|---|
-| `feat!:` / `fix!:` / `BREAKING CHANGE` in body | major |
+| `feat!:` / `fix!:` / a `BREAKING CHANGE:` footer line | major |
 | `feat:` | minor |
 | `fix:` / `perf:` | patch |
 | only `docs:`, `chore:`, `refactor:`, `ci:`, … | no release |
