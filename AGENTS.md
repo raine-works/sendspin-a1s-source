@@ -13,7 +13,7 @@ This file contains critical guidelines, architecture details, and operating rule
 2. **HARDWARE INTEGRITY & REGISTER PRESERVATION**
    - **Do not modify ES8388 codec register overrides** in `a1s-sendspin-source.yaml` (`esphome.on_boot`) unless specifically diagnosing codec register issues.
    - Register `0x0C = 0x0C` fixes ESPHome's 1-bit I²S offset / Left-Justified mismatch (prevents inverted sign bits and channel swap).
-   - Register `0x09 = 0x44` sets +12 dB ADC PGA gain for clean line-in capture.
+   - Register `0x09 = 0x00` sets 0 dB ADC PGA gain. (+12 dB / `0x44` clipped line-level turntable output at 0 dBFS.)
    - Register `0x12 = 0x22` and `0x16 = 0x00` disable voice ALC volume pumping and noise gating.
 
 3. **STRICT HALF-DUPLEX INVARIANT (SOURCE ONLY)**

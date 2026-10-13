@@ -26,8 +26,8 @@ esphome:
           // ADCCONTROL4: 16-bit I2S framing. The driver writes 0x0D (left-justified) but i2s_audio reads Philips
           // I2S, which is one bit late: every sample loses its sign bit and L/R swap. ESP-ADF writes 0x0C here.
           id(es8388_dac)->write_byte(0x0C, 0x0C);
-          // ADCCONTROL1: +12 dB ADC PGA gain for clean line-in capture (0x44 = +12 dB L/R)
-          id(es8388_dac)->write_byte(0x09, 0x44);
+          // ADCCONTROL1: 0 dB ADC PGA gain (0x00). +12 dB (0x44) clipped hot line-level sources at 0 dBFS.
+          id(es8388_dac)->write_byte(0x09, 0x00);
           // ADCCONTROL10: ALC off (the driver's voice ALC pumps music)
           id(es8388_dac)->write_byte(0x12, 0x22);
           // ADCCONTROL14: noise gate off (the driver's gate mutes the ADC below -40.5 dBFS)
@@ -114,9 +114,12 @@ sendspin:
     chunk_duration: 40ms
     # 2000ms (2 seconds) ring buffer in PSRAM protects against transient Wi-Fi jitter
     capture_buffer: 2000ms
-    codec: opus
-    opus_bitrate: 128000
-    opus_complexity: 0
+    # PCM while diagnosing: Opus encode was taking 35-58 ms per 40 ms chunk, overflowing the capture ring
+    # (~5 drops/s). 24 kHz stereo 16-bit PCM is 768 kbps.
+    codec: pcm
+    # codec: opus
+    # opus_bitrate: 128000
+    # opus_complexity: 0
     # Automatic turntable needle-drop & audio signal sensing (Sendspin line_sense)
     line_sense: true
     signal_threshold: -42dB
