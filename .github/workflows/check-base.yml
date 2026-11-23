@@ -1,0 +1,23 @@
+# The Base rules check: the base rules are wired up and current; on master, a stale copy is opened as a sync pull
+# request. The workflow is Raineworks', in raine-works/agents (.github/workflows/check-base.yml): this file only calls it, and
+# comes from the raineworks-base skill's templates/workflows/check-base.yml. Change the workflow there, for every repository
+# at once; here, only its inputs (with:). The Base rules check moves the pin when the shared workflows change.
+name: Base rules
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [master]
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  base-rules:
+    name: Base rules
+    uses: raine-works/agents/.github/workflows/check-base.yml@bcc3f92307e34338be03ec7f6a243c3435604800 # raine-works/agents master
+    secrets: inherit

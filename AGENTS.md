@@ -2,6 +2,14 @@
 
 This file contains critical guidelines, architecture details, and operating rules for AI coding assistants working in the `sendspin-a1s-source` repository.
 
+## Raineworks base rules
+
+This repository follows Raineworks' base rules, in [`.raineworks/base.md`](.raineworks/base.md): read them before
+changing anything. They're a copy of `base.md` in `raine-works/agents`, kept current by its sync: change them there,
+not here. Where this file is more specific, it wins.
+
+@.raineworks/base.md
+
 ---
 
 ## ⚠️ Core Operating Rules

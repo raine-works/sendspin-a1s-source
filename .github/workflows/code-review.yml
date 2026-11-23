@@ -1,0 +1,31 @@
+# Claude reviews every pull request against the rules, and answers replies to its comments. The workflow is Raineworks', in
+# raine-works/agents (.github/workflows/code-review.yml): this file only calls it, and comes from the raineworks-base skill's
+# templates/workflows/code-review.yml. Change the workflow there, for every repository at once; here, only its inputs
+# (with:). The Base rules check moves the pin when the shared workflows change.
+name: Code review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  pull_request_review_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write
+  actions: read
+
+jobs:
+  code-review:
+    name: Code review
+    uses: raine-works/agents/.github/workflows/code-review.yml@bcc3f92307e34338be03ec7f6a243c3435604800 # raine-works/agents master
+    secrets: inherit
+    with:
+      focus: |
+        - The AGENTS.md rules first: no change to the ES8388 codec register overrides (esphome.on_boot) unless diagnosing them; strict half-duplex (no speaker or DAC entities on the shared I2S bus).
+        - Real-time: nothing blocking, allocating or unthrottled-logging inside add_data_callback; only write_audio and atomic counters there.
+        - Memory: sizable buffers, task stacks and the Opus state in PSRAM, never internal SRAM.
+        - Log hygiene: throttled streaming telemetry, deduplicated state sensors.
+        - Security: Noise_KKpsk2 encryption, NVS key storage and pairing-token handling never log or expose keys or tokens; trust states are handled correctly.
+        - Pinned external components and dependencies; README kept in sync with config changes; Conventional Commit types match the effect on firmware (they drive releases).
