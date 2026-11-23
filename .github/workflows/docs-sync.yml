@@ -5,7 +5,11 @@
 name: Docs sync
 
 on:
-  push:
+  # This repository has no CI, so it follows the Base rules check, which runs on every push to master (Claude's action
+  # doesn't take push events).
+  workflow_run:
+    workflows: [Base rules]
+    types: [completed]
     branches: [master]
   workflow_dispatch:
 
