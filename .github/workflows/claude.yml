@@ -25,7 +25,7 @@ permissions:
 jobs:
   claude:
     name: Claude
-    uses: raine-works/agents/.github/workflows/claude.yml@50b944a9ca09c0820f8faabca62c6ec17bae64f7 # raine-works/agents master
+    uses: raine-works/agents/.github/workflows/claude.yml@3c5ed21e50ea3eb6160bad3d83a2a7f74a146d6a # raine-works/agents master
     secrets: inherit
     # The same commands as Issue to PR's (issue-to-pr.yml)
     with:
