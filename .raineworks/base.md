@@ -69,7 +69,7 @@ workflows, tell the person and offer to add the caller in its own pull request; 
   the pins by hand.
 - **Claude code review** (`code-review.yml`): on every pull request, Claude reviews the diff against this file and the
   repository's `AGENTS.md`, posts its findings, and approves once none is left open. Handle them as in the steps above.
-- **Docs sync** (`docs-sync.yml`): after `master`'s CI passes (or after a push, where there's no CI), Claude checks
+- **Docs sync** (`docs-sync.yml`): after `master`'s CI passes (or its Base rules check, where there's no CI), Claude checks
   whether what's new on `master` made any of the repository's docs wrong (see [Documentation](#documentation)) and,
   if so, opens or updates one pull request fixing them. It never pushes to `master`. It backs up the rule to update
   docs in the same pull request; it doesn't replace it.
