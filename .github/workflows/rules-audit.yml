@@ -1,0 +1,26 @@
+# Weekly, and when the rules change, Claude audits master against them and keeps a rules-audit issue open while
+# something breaks them. The workflow is Raineworks', in raine-works/agents (.github/workflows/rules-audit.yml): this file only
+# calls it, and comes from the raineworks-base skill's templates/workflows/rules-audit.yml. Change the workflow there, for
+# every repository at once; here, only its inputs (with:). The Base rules check moves the pin when the shared
+# workflows change.
+name: Rules audit
+
+on:
+  schedule:
+    - cron: '23 7 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  id-token: write
+  actions: read
+
+jobs:
+  rules-audit:
+    name: Rules audit
+    uses: raine-works/agents/.github/workflows/rules-audit.yml@bcc3f92307e34338be03ec7f6a243c3435604800 # raine-works/agents master
+    secrets: inherit
+    # with:
+    #   rules: .raineworks/base.md AGENTS.md
+    #   checklist: What else to search the source for, as prose.

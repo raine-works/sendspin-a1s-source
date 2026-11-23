@@ -1,0 +1,24 @@
+# After master's CI passes, Claude fixes the docs that what's new made wrong, in a pull request. The workflow is
+# Raineworks', in raine-works/agents (.github/workflows/docs-sync.yml): this file only calls it, and comes from the raineworks-base
+# skill's templates/workflows/docs-sync.yml. Change the workflow there, for every repository at once; here, only its
+# inputs (with:). The Base rules check moves the pin when the shared workflows change.
+name: Docs sync
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+  actions: read
+
+jobs:
+  docs-sync:
+    name: Docs sync
+    uses: raine-works/agents/.github/workflows/docs-sync.yml@bcc3f92307e34338be03ec7f6a243c3435604800 # raine-works/agents master
+    secrets: inherit
+    # with:
+    #   docs: AGENTS.md, README.md and docs/*.md.
