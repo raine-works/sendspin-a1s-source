@@ -16,6 +16,8 @@ High-fidelity ESPHome firmware that transforms the **Ai-Thinker ESP32-A1S Audio 
 
 Stream pristine line-in audio from turntables, CD players, TV optical/aux outputs, or analog preamps directly into [Music Assistant](https://music-assistant.io/) and synchronized multi-room Sendspin speaker groups with microsecond timing accuracy.
 
+Full guides are in the [documentation](docs/README.md): hardware, installation, configuration, Music Assistant, encryption and troubleshooting.
+
 ---
 
 ## 🌟 Overview
