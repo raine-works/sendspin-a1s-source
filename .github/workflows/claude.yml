@@ -1,0 +1,33 @@
+# Claude on pull requests: mention @claude in a pull request's comment or review and Claude answers there, or makes
+# the change on its branch. (On an issue, Issue to PR answers instead.) The workflow is Raineworks', in
+# raine-works/agents (.github/workflows/claude.yml): this file only calls it, and comes from the raineworks-base skill's
+# templates/workflows/claude.yml. Change the workflow there, for every repository at once; here, only its inputs
+# (with:). The Base rules check moves the pin when the shared workflows change.
+name: Claude
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  pull_request_review:
+    types: [submitted]
+  issues:
+    types: [opened, assigned]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+  actions: read
+
+jobs:
+  claude:
+    name: Claude
+    uses: raine-works/agents/.github/workflows/claude.yml@c00837f6049c34e1c89beadde30575542e7fd8dc # raine-works/agents master
+    secrets: inherit
+    # The same commands as Issue to PR's (issue-to-pr.yml)
+    with:
+      allowed-commands: >-
+        Bash(ls)
