@@ -46,8 +46,10 @@ Every change reaches `master` through a pull request. A pull request isn't done 
 
 - When Claude's review of the latest commit has nothing open, it approves the pull request: that's the approval
   `master` requires. A push dismisses it, and the next review gives it again.
-- Agents never merge a pull request: the owner does. Never skip, disable or weaken a check, a review or a ruleset to
-  get one through.
+- Agents never merge a pull request by hand: the owner does. The one exception is the pull requests the automation
+  opens (Claude's from Issue to PR, the docs, base rules and workflows syncs, release notes): it asks GitHub to
+  auto-merge them, which happens only once they're approved and every required check passes. Never skip, disable or
+  weaken a check, a review or a ruleset to get one through.
 - If `master` moves, bring it into the branch and resolve the conflicts; if it already contains the change,
   say so instead of merging a duplicate.
 - A pull request that changes `.github/workflows/code-review.yml` can't be reviewed by Claude (only `master`'s copy
@@ -148,7 +150,8 @@ Document as you go, in the same change as the code:
 - **What may be shared.** Never paste personal data, credentials or secrets into an AI tool, prompt or external
   service. An issue handed to an agent counts as shared with it.
 - **The owner owns the work.** Whoever starts an agent owns what it produces. Claude's review approves pull requests;
-  the owner merges them, and reads what matters before doing so.
+  the owner merges them (except the automation's own, which auto-merge once approved and green), and reads what
+  matters before doing so.
 - **Say when AI did the work.** Commits and pull requests made by an agent say so (e.g. a `Co-Authored-By` line).
 - **Provenance.** Don't bring in code an AI reproduced from a source whose licence is unclear.
 
