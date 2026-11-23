@@ -77,15 +77,16 @@ wifi_password: "YourNetworkPassword"
 ```
 
 ### 2. Add Configuration to ESPHome
-Copy [`a1s-sendspin-source.yaml`](file:///Users/rainepetersen/Projects/raineworks/sendspin-a1s-source/a1s-sendspin-source.yaml) into your ESPHome directory.
+Copy [`a1s-sendspin-source.yaml`](a1s-sendspin-source.yaml) into your ESPHome directory.
 
-The configuration references this repository as an external component:
+The configuration references this repository as an external component, pinned to a release tag:
 ```yaml
 external_components:
-  - source: github://raine-works/sendspin-a1s-source@master
+  - source: github://raine-works/sendspin-a1s-source@v2.0.1
     components: [sendspin]
-    refresh: always
 ```
+
+To update, change the tag to a newer [release](https://github.com/raine-works/sendspin-a1s-source/releases).
 
 ### 3. Compile & Flash
 
@@ -259,7 +260,7 @@ Every push to `master` runs the [Release workflow](.github/workflows/release.yml
 | `fix:` / `perf:` | patch |
 | only `docs:`, `chore:`, `refactor:`, `ci:`, … | no release |
 
-A bump can also be forced from **Actions → Release → Run workflow**. To pin a build to a release instead of tracking `master`, use `github://raine-works/sendspin-a1s-source@vX.Y.Z` in `external_components`.
+A bump can also be forced from **Actions → Release → Run workflow**. The example configuration pins the component to a release (`github://raine-works/sendspin-a1s-source@vX.Y.Z` in `external_components`); after a release that changes the component, move that tag in `a1s-sendspin-source.yaml` and the docs in a follow-up pull request.
 
 ---
 

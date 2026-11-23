@@ -23,7 +23,7 @@ external_components:
     components: [sendspin]
 ```
 
-Then build with `esphome run a1s-sendspin-source.yaml` from a clone. Change it back to the GitHub source before committing.
+Then build with `esphome run a1s-sendspin-source.yaml` from a clone. Change it back to the pinned GitHub source before committing.
 
 ## Rules to keep
 
@@ -50,3 +50,5 @@ Every push to `master` runs the Release workflow. It reads the Conventional Comm
 The format is `<type>(<optional scope>): <imperative summary>`. Scopes in use are `source`, `hub`, `codegen`, `config`, `deps`, `opus`, `audio`, `stream` and `api`. Pick the type by its effect on someone flashing the firmware, make one logical change per commit, and don't create tags by hand.
 
 You can force a bump from **Actions → Release → Run workflow** (`auto`, `patch`, `minor` or `major`).
+
+The example configuration pins the component to a release tag (`github://raine-works/sendspin-a1s-source@vX.Y.Z`), so a component change reaches people copying it only once the tag moves. After a release that changes `components/`, move the tag in `a1s-sendspin-source.yaml`, `README.md` and [Installation](installation.md) in a follow-up pull request.

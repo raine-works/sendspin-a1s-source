@@ -1,3 +1,7 @@
+/// @file
+/// @brief The Sendspin hub: owns the sendspin-cpp client, stores its Noise identity in NVS, and exposes pairing,
+/// trust and group state to the rest of the firmware (the source role, YAML lambdas).
+
 #pragma once
 
 #include "esphome/core/defines.h"
@@ -45,26 +49,61 @@ class SendspinHub final : public Component,
   void loop() override;
   void dump_config() override;
 
+  /// @brief Opens a client connection to the Sendspin server at @p url (a WebSocket URL).
+  ///
+  /// Does nothing until the hub has finished setup (or if setup failed). Call from the main loop thread.
   void connect_to_server(const std::string &url);
+
+  /// @brief Says goodbye to the connected server with @p reason and closes the connection.
+  ///
+  /// Does nothing until the hub has finished setup (or if setup failed).
   void disconnect_from_server(sendspin::SendspinGoodbyeReason reason);
+
+  /// @brief Reports the client's @p state to the server.
+  ///
+  /// Does nothing until the hub has finished setup (or if setup failed).
   void update_state(sendspin::SendspinClientState state);
 
+  /// @brief Returns what the connected server said about itself, or `std::nullopt` before setup has finished or
+  /// when the client has no server information.
   std::optional<sendspin::ServerInformationObject> get_server_information() const;
+
+  /// @brief Returns true while connected and the server reports the group's playback state as playing; false
+  /// otherwise, including before setup has finished.
   bool is_group_playing() const;
 
+  /// @brief Returns the client ID sendspin-cpp derived for this device, or an empty string before setup has
+  /// finished.
   std::string get_client_id() const;
+
+  /// @brief Returns the trust level of the current server connection; `ConnectionTrust::NONE` before setup has
+  /// finished or when no trusted server is connected.
   sendspin::ConnectionTrust get_trust() const;
+
+  /// @brief Returns true when the current connection is trusted at `ConnectionTrust::USER`, that is, the server has
+  /// been paired.
   bool is_paired() const;
+
+  /// @brief Returns the out-of-band pairing token to enter in the server, or an empty string before setup has
+  /// finished or when the client has none.
+  ///
+  /// The token is stable, so callers that poll it (the `Pairing Token` sensor) should publish only when it changes.
   std::string get_pairing_token() const;
 
+  /// @brief Registers @p callback (`void(const sendspin::GroupUpdateObject &)`), called on the main loop thread with
+  /// each group update the server sends.
   template<typename F> void add_group_update_callback(F &&callback) {
     this->group_update_callbacks_.add(std::forward<F>(callback));
   }
 
+  /// @brief Puts the client's HTTP and WebSocket task stack in PSRAM. Called from codegen, before setup().
   void set_task_stack_in_psram(bool task_stack_in_psram) { this->task_stack_in_psram_ = task_stack_in_psram; }
 
 #ifdef USE_SENDSPIN_SOURCE
+  /// @brief Attaches the source child; setup() adds its role to the client. Called from codegen, before setup().
   void set_source(SendspinSource *source) { this->source_ = source; }
+
+  /// @brief Returns the client's source role, or nullptr before setup has finished or if setup failed.
   sendspin::SourceRole *get_source_role();
 #endif
 
