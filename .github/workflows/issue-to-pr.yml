@@ -9,6 +9,9 @@ name: Issue to PR
 on:
   issues:
     types: [opened, labeled]
+  # An @claude comment on an issue
+  issue_comment:
+    types: [created]
   # Its follow-up: after the review, on Claude's pull requests.
   workflow_run:
     workflows: [Code review]
