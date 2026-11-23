@@ -52,6 +52,8 @@ Every change reaches `master` through a pull request. A pull request isn't done 
   say so instead of merging a duplicate.
 - A pull request that changes `.github/workflows/code-review.yml` can't be reviewed by Claude (only `master`'s copy
   runs): its review fails on purpose, and a person reviews it. Change the review workflow in a pull request of its own.
+  The one exception is a pull request that only moves the callers' pins to commits on `raine-works/agents`' `master`
+  (the Base rules check's workflows sync): the review workflow checks that by code, passes it and approves it.
 
 ### Required workflows
 
