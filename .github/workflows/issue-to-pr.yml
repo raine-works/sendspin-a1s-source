@@ -1,9 +1,9 @@
 # Issue to PR: an issue opened by the owner, any issue once it's labelled `claude` (as the rules audit's is), or an
 # issue the owner (or a collaborator) comments `@claude` on is worked by Claude into a pull request, which Claude then
-# sees through its checks and Code review's findings until it's approved. The workflow is Raineworks', in raine-
-# works/agents (.github/workflows/issue-to-pr.yml): this file only calls it, and comes from the raineworks-base skill's
-# templates/workflows/issue-to-pr.yml. Change the workflow there, for every repository at once; here, only its triggers'
-# CI name and its inputs (with:). The Base rules check moves the pin when the shared workflows change.
+# sees through its checks and Code review's findings until it's approved. The workflow is Raineworks', in
+# raine-works/agents (.github/workflows/issue-to-pr.yml): this file only calls it, and comes from the raineworks-base
+# skill's templates/workflows/issue-to-pr.yml. Change the workflow there, for every repository at once; here, only its
+# triggers' CI name and its inputs (with:). The Base rules check moves the pin when the shared workflows change.
 name: Issue to PR
 
 on:
