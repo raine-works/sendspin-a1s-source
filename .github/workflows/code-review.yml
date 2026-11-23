@@ -19,7 +19,7 @@ permissions:
 jobs:
   code-review:
     name: Code review
-    uses: raine-works/agents/.github/workflows/code-review.yml@8e071ee3392e4bf881edc8c90f72b9fb343d9e15 # raine-works/agents master
+    uses: raine-works/agents/.github/workflows/code-review.yml@854965aed6e8e3bd10aa555679dc8b598ad01146 # raine-works/agents master
     secrets: inherit
     with:
       focus: |
