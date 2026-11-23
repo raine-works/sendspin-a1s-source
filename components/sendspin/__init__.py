@@ -189,7 +189,7 @@ async def to_code(config: ConfigType) -> None:
     Args:
         config: The `sendspin:` block after `CONFIG_SCHEMA` and `FINAL_VALIDATE_SCHEMA` have accepted it.
     """
-    var =cg.new_Pvariable(config[CONF_ID])
+    var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
 
     if config.get(CONF_TASK_STACK_IN_PSRAM):
