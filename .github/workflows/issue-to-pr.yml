@@ -1,0 +1,33 @@
+# Issue to PR: an issue opened by the owner (or any issue once it's labelled `claude`, as the rules audit's is) is
+# worked by Claude into a pull request, which Claude then sees through its checks and Code review's findings until
+# it's approved. The workflow is Raineworks', in raine-works/agents (.github/workflows/issue-to-pr.yml): this file only
+# calls it, and comes from the raineworks-base skill's templates/workflows/issue-to-pr.yml. Change the workflow there,
+# for every repository at once; here, only its triggers' CI name and its inputs (with:). The Base rules check moves
+# the pin when the shared workflows change.
+name: Issue to PR
+
+on:
+  issues:
+    types: [opened, labeled]
+  # Its follow-up: after the review, on Claude's pull requests.
+  workflow_run:
+    workflows: [Code review]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+  actions: read
+
+jobs:
+  issue-to-pr:
+    name: Issue to PR
+    uses: raine-works/agents/.github/workflows/issue-to-pr.yml@aba82571e4923b96fbb64c3785bfc70a742b7c54 # raine-works/agents master
+    secrets: inherit
+    # No checks run here (the firmware builds in ESPHome, not CI), so Claude gets no commands beyond reading and
+    # editing; the review is its check.
+    with:
+      allowed-commands: >-
+        Bash(ls)
