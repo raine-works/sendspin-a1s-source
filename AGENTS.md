@@ -45,6 +45,10 @@ not here. Where this file is more specific, it wins.
    - Streaming telemetry must be throttled (default is every 5 seconds).
    - State sensors (such as `Pairing Token`) must deduplicate their outputs (returning `{}` when unchanged) to avoid flooding the log with recurring poll updates.
 
+7. **ESPHOME VERSION: A MINIMUM, NOT AN EXACT PIN**
+   - This repository is an external component that users compile with their own ESPHome, so it can't fix the exact version they build with. The ESPHome floor is this repository's form of the base rules' ESPHome pin: `min_version: 2026.8.0` in `a1s-sendspin-source.yaml`, stated the same in [Installation](docs/installation.md), [Configuration](docs/configuration.md) and the README badge.
+   - Raise the floor on purpose, in a change of its own, and update all four places together. This exception covers ESPHome only: every other dependency stays pinned exactly, as the base rules require.
+
 ---
 
 ## 📐 Architecture & Local Iteration
