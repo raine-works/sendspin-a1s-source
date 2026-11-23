@@ -1,3 +1,10 @@
+"""ESPHome `sendspin` external component: YAML schema and code generation.
+
+Validates the `sendspin:` block (the hub and its optional `source:` role), generates the C++ that creates
+`SendspinHub` and `SendspinSource`, pulls in the `sendspin/sendspin-cpp` ESP-IDF component, and sets the ESP-IDF
+sdkconfig options the source needs (httpd queueing, the UDP mailbox, and where `micro-opus` keeps its memory).
+"""
+
 import esphome.codegen as cg
 from esphome.components import esp32, microphone, network, psram, socket, wifi
 import esphome.config_validation as cv
@@ -15,6 +22,7 @@ CODEOWNERS = ["@raine-works"]
 DEPENDENCIES = ["network"]
 DOMAIN = "sendspin"
 
+# YAML keys of the `source:` block. See docs/configuration.md for what each one does and its default.
 CONF_CAPTURE_BUFFER = "capture_buffer"
 CONF_CHUNK_DURATION = "chunk_duration"
 CONF_CODEC = "codec"
@@ -51,6 +59,7 @@ SendspinSource = sendspin_ns.class_(
     cg.Component,
 )
 
+# `codec:` values accepted in YAML, mapped to the sendspin-cpp codec enum.
 SOURCE_CODECS = {
     "pcm": CODEC_FORMAT_PCM,
     "opus": CODEC_FORMAT_OPUS,
@@ -111,6 +120,8 @@ def validate_signal_threshold(value):
         )
 
 
+# Schema of the `source:` block: the microphone to stream, codec and chunking, Opus tuning, line sensing, and the
+# capture task's stack placement. Options left unset keep sendspin-cpp's `SourceRoleConfig` defaults.
 SOURCE_SCHEMA = cv.Schema(
     {
         cv.GenerateID(): cv.declare_id(SendspinSource),
@@ -137,6 +148,8 @@ SOURCE_SCHEMA = cv.Schema(
     }
 )
 
+# Schema of the top-level `sendspin:` block. ESP32 only; validating it also reserves the sockets and the
+# high-performance networking the Sendspin client and server need.
 CONFIG_SCHEMA = cv.All(
     cv.Schema(
         {
@@ -149,6 +162,7 @@ CONFIG_SCHEMA = cv.All(
     _request_high_performance_networking,
 )
 
+# Checks, once the whole configuration is known, that the source's microphone supports the requested channels.
 FINAL_VALIDATE_SCHEMA = cv.Schema(
     {
         cv.Optional(CONF_SOURCE): cv.Schema(
@@ -165,6 +179,16 @@ FINAL_VALIDATE_SCHEMA = cv.Schema(
 
 
 async def to_code(config: ConfigType) -> None:
+    """Generate the C++ and build options for a validated `sendspin:` block.
+
+    Creates and registers the `SendspinHub`, adds the sendspin-cpp ESP-IDF component and disables the roles this
+    firmware doesn't use. When `source:` is present, also creates the `SendspinSource` with its microphone, passes
+    it the role config built from the YAML, and enables the source role and the sdkconfig options it relies on;
+    otherwise the source role is compiled out.
+
+    Args:
+        config: The `sendspin:` block after `CONFIG_SCHEMA` and `FINAL_VALIDATE_SCHEMA` have accepted it.
+    """
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
 

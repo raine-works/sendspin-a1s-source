@@ -1,3 +1,7 @@
+/// @file
+/// @brief The Sendspin source: streams a microphone to the server through sendspin-cpp's source role, with
+/// sample-clock timestamps, streaming statistics and optional line sensing.
+
 #pragma once
 
 #include "esphome/core/defines.h"
@@ -36,14 +40,31 @@ class SendspinSource final : public SendspinChild, public sendspin::SourceRoleLi
   /// Called by the hub in its setup(), before it starts the client; the microphone has set its format by then.
   sendspin::SourceRoleConfig build_role_config() const;
 
+  /// @brief Enables line sensing: the microphone runs from setup() on, and the source reports signal present or
+  /// absent to the server. Called from codegen, before setup().
   void set_line_sense(bool line_sense) { this->line_sense_ = line_sense; }
+
+  /// @brief Sets the peak level, as a raw 16-bit sample amplitude (1–32767), at or above which audio counts as a
+  /// signal. Codegen converts the YAML's dB or percentage value to this.
   void set_signal_threshold(int16_t threshold) { this->signal_threshold_ = threshold; }
+
+  /// @brief Sets how long, in milliseconds, the peak must stay below the threshold before signal is reported absent.
   void set_silence_timeout_ms(uint32_t ms) { this->silence_timeout_ms_ = ms; }
+
+  /// @brief Sets how long, in milliseconds, the peak must stay at or above the threshold before signal is reported
+  /// present.
   void set_debounce_duration_ms(uint32_t ms) { this->debounce_duration_ms_ = ms; }
 
+  /// @brief Returns true once line sensing has reported signal present, until it reports absent. Always false
+  /// without line sensing. Main loop thread only.
   bool is_signal_present() const { return this->current_signal_ == sendspin::SourceSignal::PRESENT; }
+
+  /// @brief Returns the highest absolute sample value (0–32767) seen in the last 100 ms line-sensing window; 0
+  /// without line sensing. Main loop thread only.
   int16_t get_last_peak() const { return this->last_peak_; }
 
+  /// @brief Registers @p callback (`void(bool present)`), called on the main loop thread each time line sensing
+  /// reports signal present (true) or absent (false) to the server.
   template<typename F> void add_signal_callback(F &&callback) {
     this->signal_callbacks_.add(std::forward<F>(callback));
   }

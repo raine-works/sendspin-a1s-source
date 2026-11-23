@@ -1,6 +1,6 @@
 # Instructions for AI Coding Agents (`AGENTS.md`)
 
-This file contains critical guidelines, architecture details, and operating rules for AI coding assistants working in the `sendspin-a1s-source` repository.
+This file contains critical guidelines and operating rules for AI coding assistants working in the `sendspin-a1s-source` repository.
 
 ## Raineworks base rules
 
@@ -35,10 +35,10 @@ not here. Where this file is more specific, it wins.
 
 5. **MEMORY DISCIPLINE (PSRAM PREFERRED)**
    - ESP32 internal SRAM is severely constrained (~100–150 KB free heap).
-   - All sizable buffers (capture ring buffer, chunk staging buffers, Opus encoder state/arena, task stacks) **must** reside in external PSRAM:
+   - All sizable buffers (capture ring buffer, task stacks) **must** reside in external PSRAM:
      - `task_stack_in_psram: true` on both hub and source.
      - `MemoryLocation::PREFER_EXTERNAL` in role configs.
-   - Never allocate large buffers in internal SRAM.
+   - **One deliberate exception:** the `micro-opus` pseudostack and encoder state prefer internal SRAM (`CONFIG_OPUS_*_PREFER_INTERNAL` in `__init__.py`), because encoding from PSRAM is about 2× slower and can't keep up in real time. Don't move them to PSRAM, or add another internal-RAM exception, without measuring encode time on the device. See [How it works](docs/how-it-works.md#memory).
 
 6. **LOG HYGIENE & ANTI-SPAM**
    - Do not emit high-frequency or unthrottled logs during active audio capture.
@@ -47,57 +47,9 @@ not here. Where this file is more specific, it wins.
 
 ---
 
-## 📐 Architecture & Key Components
+## 📐 Architecture & Local Iteration
 
-```
-sendspin-a1s-source/
-├── a1s-sendspin-source.yaml        # Main ESPHome configuration for ESP32-A1S
-├── components/
-│   └── sendspin/                   # ESPHome external component
-│       ├── __init__.py             # Component schema, codegen, and ESP-IDF sdkconfig
-│       ├── sendspin_hub.h/.cpp     # Hub component: Noise encryption, NVS keys, WebSocket
-│       └── sendspin_source.h/.cpp  # Audio source role: I2S capture, slew correction, telemetry
-├── README.md                       # User-facing documentation & wiring guide
-└── AGENTS.md                       # Rules and guidelines for AI agents
-```
-
-### Component Roles & Responsibilities
-
-1. **`SendspinHub` (`sendspin_hub.h`, `sendspin_hub.cpp`)**:
-   - Manages client lifecycle and connects to `sendspin-cpp`.
-   - Handles `Noise_KKpsk2` key generation, NVS persistence, and out-of-band pairing token retrieval (`get_pairing_token()`).
-   - Surfaces server trust states (`NONE`, `DETECTED`, `PIN`, `USER`).
-
-2. **`SendspinSource` (`sendspin_source.h`, `sendspin_source.cpp`)**:
-   - Implements `sendspin::SourceRoleListener`.
-   - Gated by server commands: the microphone is only started when the server sends `start` and stopped when the server sends `stop`.
-   - Tracks real-time slew correction between ADC hardware arrival times and `esp_timer_get_time()`.
-   - Tracks atomic byte counters and logs 5-second streaming telemetry (`Streaming: X s active | Y KB sent | Z drops`).
-
-3. **`__init__.py`**:
-   - Registers ESP-IDF dependencies (`sendspin/sendspin-cpp`, `esphome/micro-opus`).
-   - Configures critical sdkconfig settings:
-     - `CONFIG_SENDSPIN_ENABLE_SOURCE = True`
-     - `CONFIG_HTTPD_QUEUE_WORK_BLOCKING = True`
-     - `CONFIG_LWIP_UDP_RECVMBOX_SIZE = 32`
-     - `CONFIG_OPUS_NONTHREADSAFE_PSEUDOSTACK = True`
-     - `CONFIG_OPUS_PSEUDOSTACK_PREFER_PSRAM = True`
-     - `CONFIG_OPUS_STATE_PREFER_PSRAM = True`
-
----
-
-## 🛠️ Testing & Local Iteration
-
-When modifying files in `components/sendspin/`:
-- `a1s-sendspin-source.yaml` references the component. If iterating locally without pushing to GitHub first, update `external_components` to use the local path:
-  ```yaml
-  external_components:
-    - source:
-        type: local
-        path: components
-      components: [sendspin]
-  ```
-- Before publishing or committing changes, ensure that `README.md` stays synchronized with any configuration or code changes.
+How the hub, the source and the code generation fit together is in [How it works](docs/how-it-works.md). The repository layout, and how to build the component from a local clone, are in [Development](docs/development.md).
 
 ## 🏷️ Versioning
 
@@ -116,4 +68,3 @@ Commit messages **must** follow [Conventional Commits](https://www.conventionalc
 
 - Pick the type by effect on someone flashing the firmware, not by the size of the diff. A one-line register change that fixes audio is `fix`; a large internal restructure with identical behavior is `refactor`.
 - One logical change per commit, so each type stays accurate. Don't bundle a `feat` into a `fix` commit.
-- Never create version tags or releases by hand; the workflow owns them.

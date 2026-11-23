@@ -22,4 +22,4 @@ With `line_sense` on, the microphone keeps running. The callback keeps the highe
 
 ## Memory
 
-The capture buffer and the task stacks marked `task_stack_in_psram` live in PSRAM, which is why `psram` is required. The Opus pseudostack and encoder state prefer internal RAM, because the build comment says PSRAM slows encoding. The source logs the free internal heap when a stream starts.
+The capture buffer and the task stacks marked `task_stack_in_psram` live in PSRAM, which is why `psram` is required. The `micro-opus` pseudostack (60,000 bytes) and encoder state prefer internal RAM, falling back to PSRAM, because encoding from PSRAM is about 2× slower and can't keep up in real time. It's the one deliberate exception to keeping large buffers in PSRAM (`AGENTS.md`, rule 5), set by the `CONFIG_OPUS_*_PREFER_INTERNAL` options in `__init__.py`. The source logs the free internal heap when a stream starts.

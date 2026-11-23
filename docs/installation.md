@@ -18,12 +18,11 @@ Copy `a1s-sendspin-source.yaml` from the repository into your ESPHome directory.
 
 ```yaml
 external_components:
-  - source: github://raine-works/sendspin-a1s-source@master
+  - source: github://raine-works/sendspin-a1s-source@v2.0.1
     components: [sendspin]
-    refresh: always
 ```
 
-`@master` tracks the latest commit. To pin a build to a release, use a tag such as `@vX.Y.Z` instead (see [Development](development.md#releases)).
+The component is pinned to a release tag, so every build uses the same code. To update, change the tag to a newer [release](https://github.com/raine-works/sendspin-a1s-source/releases) (see [Development](development.md#releases)).
 
 The device is named `a1s-sendspin-source`, with the friendly name “A1S Sendspin Source”. Change `name` and `friendly_name` under `esphome:` if you want something else; Music Assistant shows the friendly name.
 
@@ -48,4 +47,4 @@ esphome run a1s-sendspin-source.yaml
 
 ## Updating
 
-Because the example uses `refresh: always`, each compile fetches the component again. Clean the build files before updating so the new component and its ESP-IDF dependencies are rebuilt.
+Change the tag in `external_components` to the release you want, then clean the build files so the new component and its ESP-IDF dependencies are rebuilt.
