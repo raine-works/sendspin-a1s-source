@@ -22,7 +22,7 @@ permissions:
 jobs:
   docs-sync:
     name: Docs sync
-    uses: raine-works/agents/.github/workflows/docs-sync.yml@9bac93eafd58b8d22e41d179650b6d1573cee55b # raine-works/agents master
+    uses: raine-works/agents/.github/workflows/docs-sync.yml@8d50b54592ee925341854a8a0aa2130336a1c416 # raine-works/agents master
     secrets: inherit
     # with:
     #   docs: AGENTS.md, README.md and docs/*.md.
