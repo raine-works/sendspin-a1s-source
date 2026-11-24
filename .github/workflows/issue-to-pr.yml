@@ -27,7 +27,7 @@ permissions:
 jobs:
   issue-to-pr:
     name: Issue to PR
-    uses: raine-works/agents/.github/workflows/issue-to-pr.yml@9bac93eafd58b8d22e41d179650b6d1573cee55b # raine-works/agents master
+    uses: raine-works/agents/.github/workflows/issue-to-pr.yml@8d50b54592ee925341854a8a0aa2130336a1c416 # raine-works/agents master
     secrets: inherit
     # No checks run here (the firmware builds in ESPHome, not CI), so Claude gets no commands beyond reading and
     # editing; the review is its check.
