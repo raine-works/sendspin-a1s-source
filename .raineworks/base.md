@@ -34,7 +34,8 @@ and apply the rules for every language and tool it uses.
 
 Every change reaches `master` through a pull request. A pull request isn't done when it's opened.
 
-1. Open it with a description of what changed, why, and how it was tested (the real results).
+1. Open it ready for review, never as a draft (the code review skips drafts), with a description of what changed,
+   why, and how it was tested (the real results).
 2. **Wait for every check and the code review to finish** (`gh pr checks <number> --watch`): the repository's CI and
    Claude's code review. Don't report the pull request ready, and don't stop, while any is running. If none start,
    find out why (a merge conflict stops them).
